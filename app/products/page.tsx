@@ -613,6 +613,23 @@ export default function ProductsPage() {
         products={products}
         quantities={quantities}
         lengths={lengths}
+        onUpdateCart={(updatedCart) => {
+          setCart(updatedCart)
+          // Update quantities and lengths to match
+          const newQuantities: Record<string, number> = {}
+          const newLengths: Record<string, number> = {}
+          updatedCart.forEach((item) => {
+            newQuantities[item.id] = item.quantity
+            newLengths[item.id] = item.length
+          })
+          setQuantities(newQuantities)
+          setLengths(newLengths)
+        }}
+        onClearCart={() => {
+          setCart([])
+          setQuantities({})
+          setLengths({})
+        }}
       />
       <Footer />
     </div>

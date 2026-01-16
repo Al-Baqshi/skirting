@@ -18,6 +18,8 @@ type CheckoutModalProps = {
   products: StorefrontProduct[]
   quantities: Record<string, number>
   lengths: Record<string, number>
+  onUpdateCart?: (cart: CartItem[]) => void
+  onClearCart?: () => void
 }
 
 export function CheckoutModal({
@@ -27,8 +29,13 @@ export function CheckoutModal({
   products,
   quantities,
   lengths,
+  onUpdateCart,
+  onClearCart,
 }: CheckoutModalProps) {
   const [submitting, setSubmitting] = useState(false)
+  const [localCart, setLocalCart] = useState<CartItem[]>(cart)
+  const [localQuantities, setLocalQuantities] = useState<Record<string, number>>(quantities)
+  const [localLengths, setLocalLengths] = useState<Record<string, number>>(lengths)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -39,11 +46,18 @@ export function CheckoutModal({
     notes: "",
   })
 
+  // Sync local state with props when cart changes
+  useEffect(() => {
+    setLocalCart(cart)
+    setLocalQuantities(quantities)
+    setLocalLengths(lengths)
+  }, [cart, quantities, lengths])
+
   // Calculate cart items with product details
-  const cartItems = cart.map((item) => {
+  const cartItems = localCart.map((item) => {
     const product = products.find((p) => p.id === item.id)
-    const qty = quantities[item.id] || item.quantity
-    const len = lengths[item.id] || item.length
+    const qty = localQuantities[item.id] || item.quantity
+    const len = localLengths[item.id] || item.length
     const price = product?.price || 0
     const subtotal = price * len * qty
 
@@ -60,6 +74,59 @@ export function CheckoutModal({
   })
 
   const total = cartItems.reduce((sum, item) => sum + item.subtotal, 0)
+
+  // Update cart item quantity
+  const updateQuantity = (productId: string, newQuantity: number) => {
+    if (newQuantity < 1) return
+    setLocalQuantities((prev) => ({ ...prev, [productId]: newQuantity }))
+    setLocalCart((prev) =>
+      prev.map((item) => (item.id === productId ? { ...item, quantity: newQuantity } : item))
+    )
+    if (onUpdateCart) {
+      const updated = localCart.map((item) =>
+        item.id === productId ? { ...item, quantity: newQuantity } : item
+      )
+      onUpdateCart(updated)
+    }
+  }
+
+  // Update cart item length
+  const updateLength = (productId: string, newLength: number) => {
+    if (newLength < 0.1) return
+    setLocalLengths((prev) => ({ ...prev, [productId]: newLength }))
+    setLocalCart((prev) =>
+      prev.map((item) => (item.id === productId ? { ...item, length: newLength } : item))
+    )
+    if (onUpdateCart) {
+      const updated = localCart.map((item) =>
+        item.id === productId ? { ...item, length: newLength } : item
+      )
+      onUpdateCart(updated)
+    }
+  }
+
+  // Remove item from cart
+  const removeItem = (productId: string) => {
+    const updated = localCart.filter((item) => item.id !== productId)
+    setLocalCart(updated)
+    if (onUpdateCart) {
+      onUpdateCart(updated)
+    }
+    toast.success("Item removed from cart")
+  }
+
+  // Clear entire cart
+  const clearCart = () => {
+    if (confirm("Are you sure you want to clear your cart?")) {
+      setLocalCart([])
+      if (onClearCart) {
+        onClearCart()
+      } else if (onUpdateCart) {
+        onUpdateCart([])
+      }
+      toast.success("Cart cleared")
+    }
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -105,6 +172,13 @@ export function CheckoutModal({
           postalCode: "",
           notes: "",
         })
+        // Clear cart after successful order
+        if (onClearCart) {
+          onClearCart()
+        } else if (onUpdateCart) {
+          onUpdateCart([])
+        }
+        setLocalCart([])
         onClose()
       } else {
         toast.error(`Error: ${json.error || "Failed to submit order"}`)
@@ -153,33 +227,98 @@ export function CheckoutModal({
           <form id="checkout-form" onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Order Summary */}
           <div className="bg-skirting-dark border border-white/10 rounded-xl p-4">
-            <h3 className="text-lg font-semibold text-white mb-4">Order Summary</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Order Summary</h3>
+              {cartItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearCart}
+                  className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                >
+                  Clear Cart
+                </button>
+              )}
+            </div>
             <div className="space-y-3">
-              {cartItems.map((item) => (
-                <div key={item.productId} className="flex items-start gap-4 pb-3 border-b border-white/10 last:border-0">
-                  {item.image && (
-                    <img
-                      src={item.image}
-                      alt={item.productName}
-                      className="w-16 h-16 object-cover rounded-lg"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-white font-medium truncate">{item.productName}</h4>
-                    <p className="text-skirting-silver/60 text-sm">
-                      {item.length}m × {item.quantity} @ ${item.price}/m
-                    </p>
+              {cartItems.length === 0 ? (
+                <p className="text-skirting-silver/60 text-center py-4">Your cart is empty</p>
+              ) : (
+                cartItems.map((item) => (
+                  <div key={item.productId} className="flex items-start gap-4 pb-3 border-b border-white/10 last:border-0">
+                    {item.image && (
+                      <img
+                        src={item.image}
+                        alt={item.productName}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h4 className="text-white font-medium truncate">{item.productName}</h4>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(item.productId)}
+                          className="text-red-400 hover:text-red-300 transition-colors p-1"
+                          title="Remove item"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                      
+                      {/* Editable Quantity and Length */}
+                      <div className="flex gap-2 items-center mb-2">
+                        <div className="flex items-center gap-1">
+                          <label className="text-skirting-silver/60 text-xs">Length:</label>
+                          <input
+                            type="number"
+                            min="0.1"
+                            step="0.1"
+                            value={item.length}
+                            onChange={(e) => updateLength(item.productId, parseFloat(e.target.value) || 0.1)}
+                            className="w-16 bg-skirting-charcoal border border-white/10 rounded px-2 py-1 text-white text-sm focus:border-skirting-amber focus:outline-none"
+                          />
+                          <span className="text-skirting-silver/60 text-xs">m</span>
+                        </div>
+                        <span className="text-skirting-silver/40">×</span>
+                        <div className="flex items-center gap-1">
+                          <label className="text-skirting-silver/60 text-xs">Qty:</label>
+                          <div className="flex items-center border border-white/10 rounded bg-skirting-charcoal">
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                              className="px-2 py-1 text-skirting-silver hover:text-white transition-colors text-sm"
+                            >
+                              -
+                            </button>
+                            <span className="px-2 py-1 text-white text-sm min-w-[2rem] text-center">{item.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                              className="px-2 py-1 text-skirting-silver hover:text-white transition-colors text-sm"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                        <span className="text-skirting-silver/60 text-xs">@ ${item.price}/m</span>
+                      </div>
+                      
+                      <div className="text-right">
+                        <p className="text-skirting-amber font-semibold">${item.subtotal.toFixed(2)}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-skirting-amber font-semibold">${item.subtotal.toFixed(2)}</p>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
-            <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
-              <span className="text-lg font-semibold text-white">Total</span>
-              <span className="text-2xl font-bold text-skirting-amber">${total.toFixed(2)}</span>
-            </div>
+            {cartItems.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
+                <span className="text-lg font-semibold text-white">Total</span>
+                <span className="text-2xl font-bold text-skirting-amber">${total.toFixed(2)}</span>
+              </div>
+            )}
           </div>
 
           {/* Customer Information */}
