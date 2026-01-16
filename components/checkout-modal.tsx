@@ -1,0 +1,299 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { X } from "lucide-react"
+import { toast } from "sonner"
+import type { StorefrontProduct } from "@/lib/supabase-products"
+
+type CartItem = {
+  id: string
+  quantity: number
+  length: number
+}
+
+type CheckoutModalProps = {
+  isOpen: boolean
+  onClose: () => void
+  cart: CartItem[]
+  products: StorefrontProduct[]
+  quantities: Record<string, number>
+  lengths: Record<string, number>
+}
+
+export function CheckoutModal({
+  isOpen,
+  onClose,
+  cart,
+  products,
+  quantities,
+  lengths,
+}: CheckoutModalProps) {
+  const [submitting, setSubmitting] = useState(false)
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    postalCode: "",
+    notes: "",
+  })
+
+  // Calculate cart items with product details
+  const cartItems = cart.map((item) => {
+    const product = products.find((p) => p.id === item.id)
+    const qty = quantities[item.id] || item.quantity
+    const len = lengths[item.id] || item.length
+    const price = product?.price || 0
+    const subtotal = price * len * qty
+
+    return {
+      productId: item.id,
+      productName: product?.name || "Unknown Product",
+      productSlug: product?.slug || "",
+      price,
+      length: len,
+      quantity: qty,
+      subtotal,
+      image: product?.image || "",
+    }
+  })
+
+  const total = cartItems.reduce((sum, item) => sum + item.subtotal, 0)
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [isOpen])
+
+  if (!isOpen) return null
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setSubmitting(true)
+
+    try {
+      const orderData = {
+        customer: formData,
+        items: cartItems,
+        total: total.toFixed(2),
+        orderDate: new Date().toISOString(),
+      }
+
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderData),
+      })
+
+      const json = await res.json()
+
+      if (res.ok) {
+        toast.success("Order submitted successfully! We'll contact you soon to arrange payment.")
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          address: "",
+          city: "",
+          postalCode: "",
+          notes: "",
+        })
+        onClose()
+      } else {
+        toast.error(`Error: ${json.error || "Failed to submit order"}`)
+      }
+    } catch (err) {
+      toast.error(`Error: ${err instanceof Error ? err.message : "Unknown error"}`)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={(e) => {
+        // Close modal when clicking backdrop
+        if (e.target === e.currentTarget) {
+          onClose()
+        }
+      }}
+      onWheel={(e) => {
+        // Prevent background scrolling when scrolling in modal
+        e.stopPropagation()
+      }}
+      onTouchMove={(e) => {
+        // Prevent background scrolling on mobile
+        if (e.target === e.currentTarget) {
+          e.preventDefault()
+        }
+      }}
+    >
+      <div className="bg-skirting-charcoal border border-white/10 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex-shrink-0 bg-skirting-charcoal border-b border-white/10 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <h2 className="text-2xl font-bold text-white">Checkout</h2>
+          <button
+            onClick={onClose}
+            className="text-skirting-silver hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Scrollable Content Area */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          <form id="checkout-form" onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Order Summary */}
+          <div className="bg-skirting-dark border border-white/10 rounded-xl p-4">
+            <h3 className="text-lg font-semibold text-white mb-4">Order Summary</h3>
+            <div className="space-y-3">
+              {cartItems.map((item) => (
+                <div key={item.productId} className="flex items-start gap-4 pb-3 border-b border-white/10 last:border-0">
+                  {item.image && (
+                    <img
+                      src={item.image}
+                      alt={item.productName}
+                      className="w-16 h-16 object-cover rounded-lg"
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-white font-medium truncate">{item.productName}</h4>
+                    <p className="text-skirting-silver/60 text-sm">
+                      {item.length}m × {item.quantity} @ ${item.price}/m
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-skirting-amber font-semibold">${item.subtotal.toFixed(2)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
+              <span className="text-lg font-semibold text-white">Total</span>
+              <span className="text-2xl font-bold text-skirting-amber">${total.toFixed(2)}</span>
+            </div>
+          </div>
+
+          {/* Customer Information */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-white">Customer Information</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-skirting-silver text-sm mb-2">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div>
+                <label className="block text-skirting-silver text-sm mb-2">Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                  placeholder="john@example.com"
+                />
+              </div>
+              <div>
+                <label className="block text-skirting-silver text-sm mb-2">Phone *</label>
+                <input
+                  type="tel"
+                  required
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                  placeholder="+64 9 123 4567"
+                />
+              </div>
+              <div>
+                <label className="block text-skirting-silver text-sm mb-2">Postal Code</label>
+                <input
+                  type="text"
+                  value={formData.postalCode}
+                  onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                  className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                  placeholder="1010"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-skirting-silver text-sm mb-2">Delivery Address *</label>
+              <input
+                type="text"
+                required
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                placeholder="123 Main Street"
+              />
+            </div>
+            <div>
+              <label className="block text-skirting-silver text-sm mb-2">City *</label>
+              <input
+                type="text"
+                required
+                value={formData.city}
+                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                placeholder="Auckland"
+              />
+            </div>
+            <div>
+              <label className="block text-skirting-silver text-sm mb-2">Additional Notes</label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={3}
+                className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none resize-none"
+                placeholder="Any special instructions or requirements..."
+              />
+            </div>
+          </div>
+
+          {/* Info Notice */}
+          <div className="bg-skirting-amber/10 border border-skirting-amber/30 rounded-lg p-4">
+            <p className="text-skirting-amber text-sm">
+              <strong>Note:</strong> After submitting your order, we'll contact you within 24 hours to arrange payment and delivery. No payment is required at this time.
+            </p>
+          </div>
+          </form>
+        </div>
+
+        {/* Fixed Footer with Submit Button */}
+        <div className="flex-shrink-0 border-t border-white/10 bg-skirting-charcoal px-6 py-4 rounded-b-2xl">
+          <div className="flex gap-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 px-6 py-3 border border-white/10 text-skirting-silver font-semibold uppercase tracking-wide hover:border-skirting-amber hover:text-skirting-amber transition-colors rounded-lg"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="checkout-form"
+              disabled={submitting || cartItems.length === 0}
+              className="flex-1 px-6 py-3 bg-skirting-amber text-skirting-dark font-semibold uppercase tracking-wide hover:bg-white transition-colors rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? "Submitting..." : "Submit Order"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
