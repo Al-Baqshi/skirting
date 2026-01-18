@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { AdminAuth } from "@/components/admin-auth"
+import { useRealtimeNotifications } from "@/hooks/use-realtime-notifications"
 
 type Order = {
   id: string
@@ -59,6 +60,23 @@ function OrdersPageContent() {
   useEffect(() => {
     loadData()
   }, [])
+
+  // Set up real-time notifications for new orders and inquiries
+  useRealtimeNotifications({
+    onNewOrder: (newOrder) => {
+      // Reload data to show the new order
+      loadData()
+      // Switch to orders tab if not already there
+      setActiveTab("orders")
+    },
+    onNewInquiry: (newInquiry) => {
+      // Reload data to show the new inquiry
+      loadData()
+      // Switch to inquiries tab if not already there
+      setActiveTab("inquiries")
+    },
+    enabled: true,
+  })
 
   const loadData = async () => {
     try {

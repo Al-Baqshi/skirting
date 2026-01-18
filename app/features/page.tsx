@@ -4,17 +4,30 @@ import { Footer } from "@/components/footer"
 import { Link } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "Features - Innovation Skirting | New Zealand's Skirting Specialists",
+  title: "Skirting Features NZ | LED Skirting, Smart Skirting & More",
   description:
-    "Discover why Innovation Skirting is New Zealand's only specialized skirting company. Premium LED skirting boards with integrated features, smart control, and 5-year warranty.",
+    "Discover premium skirting features - LED skirting boards, smart WiFi control, aluminium construction & 5-year warranty. New Zealand's only specialized skirting company.",
   keywords: [
-    "skirting features",
-    "LED skirting",
-    "smart skirting",
-    "New Zealand skirting",
-    "Innovation Skirting",
+    "skirting features NZ",
+    "LED skirting NZ",
+    "smart skirting New Zealand",
     "skirting boards features",
+    "aluminium skirting features",
+    "WiFi skirting",
+    "dimmable skirting",
+    "RGB skirting NZ",
+    "skirting with LED lights",
+    "modern skirting NZ",
   ],
+  openGraph: {
+    title: "Skirting Features | Innovation Skirting NZ",
+    description: "Premium LED skirting boards with smart control, aluminium construction & 5-year warranty.",
+    type: "website",
+    locale: "en_NZ",
+  },
+  alternates: {
+    canonical: "https://skirting.co.nz/features",
+  },
 }
 
 const features = [

@@ -4,16 +4,30 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 
 export const metadata: Metadata = {
-  title: "Installation - Innovation Skirting | Professional & DIY Installation New Zealand",
+  title: "Skirting Installation NZ | Professional & DIY Skirting Installation",
   description:
-    "Choose professional installation or DIY installation for your skirting boards in New Zealand. Innovation Skirting offers expert installation services and easy click-fit systems.",
+    "Skirting installation in New Zealand - professional installation or easy DIY. Innovation Skirting offers expert skirting board installation services and click-fit systems nationwide.",
   keywords: [
-    "skirting installation",
+    "skirting installation NZ",
     "skirting installation New Zealand",
+    "install skirting boards",
     "professional skirting installation",
-    "DIY skirting",
+    "DIY skirting NZ",
     "skirting boards installation",
+    "LED skirting installation",
+    "skirting installer Auckland",
+    "skirting installer Wellington",
+    "skirting installer Christchurch",
   ],
+  openGraph: {
+    title: "Skirting Installation NZ | Innovation Skirting",
+    description: "Professional skirting installation or easy DIY - Innovation Skirting offers expert installation services nationwide.",
+    type: "website",
+    locale: "en_NZ",
+  },
+  alternates: {
+    canonical: "https://skirting.co.nz/installation",
+  },
 }
 
 export default function InstallationPage() {

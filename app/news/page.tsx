@@ -6,17 +6,29 @@ import { Footer } from "@/components/footer"
 import { getNewsArticles, getFeaturedArticles } from "@/lib/news"
 
 export const metadata: Metadata = {
-  title: "News & Articles - Innovation Skirting | New Zealand's Skirting Specialists",
+  title: "Skirting News NZ | Articles & Tips on Skirting Boards",
   description:
-    "Latest news and articles about skirting boards in New Zealand. Learn why Innovation Skirting is New Zealand's #1 skirting specialist with best prices and highest quality.",
+    "Latest skirting news and articles for New Zealand. Tips on LED skirting, skirting installation, and modern skirting trends. From NZ's #1 skirting specialist.",
   keywords: [
-    "skirting news",
+    "skirting news NZ",
     "skirting articles",
-    "skirting New Zealand",
-    "LED skirting",
+    "skirting tips",
+    "LED skirting guide",
     "skirting boards NZ",
-    "Innovation Skirting",
+    "skirting trends",
+    "skirting installation tips",
+    "modern skirting ideas",
+    "skirting blog NZ",
   ],
+  openGraph: {
+    title: "Skirting News & Articles | Innovation Skirting NZ",
+    description: "Latest news, tips, and articles on skirting boards in New Zealand.",
+    type: "website",
+    locale: "en_NZ",
+  },
+  alternates: {
+    canonical: "https://skirting.co.nz/news",
+  },
 }
 
 export default function NewsPage() {
