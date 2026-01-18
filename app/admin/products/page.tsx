@@ -351,16 +351,24 @@ function AdminProductsPageContent() {
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Product Management</h1>
             <p className="text-skirting-silver/70">Add, edit, and manage skirting board products</p>
           </div>
-          <button
-            onClick={() => {
-              resetForm()
-              setEditingId(null)
-              setIsAdding(true)
-            }}
-            className="px-6 py-3 bg-skirting-amber text-skirting-dark font-semibold uppercase tracking-wide hover:bg-white transition-colors"
-          >
-            + Add Product
-          </button>
+          <div className="flex gap-3">
+            <Link
+              href="/admin/orders"
+              className="px-6 py-3 border border-white/10 text-skirting-silver font-semibold uppercase tracking-wide hover:border-skirting-amber hover:text-skirting-amber transition-colors"
+            >
+              View Orders
+            </Link>
+            <button
+              onClick={() => {
+                resetForm()
+                setEditingId(null)
+                setIsAdding(true)
+              }}
+              className="px-6 py-3 bg-skirting-amber text-skirting-dark font-semibold uppercase tracking-wide hover:bg-white transition-colors"
+            >
+              + Add Product
+            </button>
+          </div>
         </div>
 
         {/* Add/Edit Form */}
