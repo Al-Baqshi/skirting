@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { verifyAdminAuth } from "@/lib/admin-auth"
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+function getSupabase() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
+  }
+  return createClient(supabaseUrl, supabaseServiceKey)
+}
 
 // GET - Get single product
 export async function GET(
@@ -18,6 +22,7 @@ export async function GET(
   }
 
   try {
+    const supabase = getSupabase()
     const { id } = await params
     const { data: product, error } = await supabase
       .from("products")
@@ -35,10 +40,8 @@ export async function GET(
 
     return NextResponse.json({ product })
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
-    )
+    const message = err instanceof Error ? err.message : "Unknown error"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
@@ -53,8 +56,14 @@ export async function PATCH(
   }
 
   try {
+    const supabase = getSupabase()
     const { id } = await params
-    const body = await request.json()
+    let body: Record<string, unknown>
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+    }
     const {
       name,
       image,
@@ -62,6 +71,7 @@ export async function PATCH(
       ledType,
       height,
       heightValue,
+      heightOptions,
       profile,
       power,
       features,
@@ -107,16 +117,15 @@ export async function PATCH(
       updateData.slug = slug
     }
     if (image !== undefined) updateData.image = image || (images && images[0]) || null
-    // Add images if provided (will fail silently if column doesn't exist)
-    // To enable: ALTER TABLE products ADD COLUMN images TEXT[] DEFAULT '{}';
+    // Always persist images array when provided (5 slots: Main, Params, Install, Accessories, Colours)
     if (images !== undefined) {
-      if (Array.isArray(images) && images.length > 0) {
-        updateData.images = images
-      } else if (image) {
-        updateData.images = [image]
-      } else {
-        updateData.images = []
-      }
+      const arr = Array.isArray(images) ? images : image ? [image] : []
+      // Pad to 5 slots for consistent schema; filter to strings only
+      const normalized = Array.from({ length: 5 }, (_, i) => {
+        const v = arr[i]
+        return typeof v === "string" && v.trim() ? v.trim() : ""
+      })
+      updateData.images = normalized
     }
     if (ledType !== undefined) updateData.led_type = ledType || null
     if (height !== undefined) updateData.height = height || null
@@ -125,6 +134,10 @@ export async function PATCH(
         return NextResponse.json({ error: "Height value must be a positive number" }, { status: 400 })
       }
       updateData.height_value = heightValue || null
+    }
+    if (heightOptions !== undefined) {
+      const opts = Array.isArray(heightOptions) ? heightOptions.filter((n) => [40, 60, 80, 260, 300, 500].includes(n)) : [40, 60, 80, 260, 300, 500]
+      updateData.height_options = opts.length > 0 ? opts : [40, 60, 80, 260, 300, 500]
     }
     if (profile !== undefined) updateData.profile = profile || null
     if (power !== undefined) updateData.power = power || null
@@ -162,10 +175,8 @@ export async function PATCH(
 
     return NextResponse.json({ product })
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
-    )
+    const message = err instanceof Error ? err.message : "Unknown error"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 
@@ -180,6 +191,7 @@ export async function DELETE(
   }
 
   try {
+    const supabase = getSupabase()
     const { id } = await params
     const { error } = await supabase.from("products").delete().eq("id", id)
 
@@ -189,9 +201,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true })
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Unknown error" },
-      { status: 500 }
-    )
+    const message = err instanceof Error ? err.message : "Unknown error"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

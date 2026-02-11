@@ -47,7 +47,7 @@ function convertToStorefrontProduct(product: {
 export async function GET() {
   try {
     // Try to fetch from Supabase first
-    const products = await getSupabaseProducts(50)
+    const products = await getSupabaseProducts(50, true) // include inactive so all products show; user can reorder in admin
     return NextResponse.json({ products })
   } catch (err) {
     // If Supabase fails (e.g., table doesn't exist), fall back to default products

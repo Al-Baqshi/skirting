@@ -103,11 +103,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_contact_inquiries_updated_at ON public.contact_inquiries;
 CREATE TRIGGER update_contact_inquiries_updated_at
   BEFORE UPDATE ON public.contact_inquiries
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_guest_orders_updated_at ON public.guest_orders;
 CREATE TRIGGER update_guest_orders_updated_at
   BEFORE UPDATE ON public.guest_orders
   FOR EACH ROW
@@ -134,12 +136,14 @@ ALTER TABLE public.contact_inquiries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.guest_orders ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can insert (for form submissions)
+DROP POLICY IF EXISTS "Allow public insert contact inquiries" ON public.contact_inquiries;
 CREATE POLICY "Allow public insert contact inquiries"
   ON public.contact_inquiries
   FOR INSERT
   TO anon, authenticated
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Allow public insert guest orders" ON public.guest_orders;
 CREATE POLICY "Allow public insert guest orders"
   ON public.guest_orders
   FOR INSERT
@@ -147,24 +151,28 @@ CREATE POLICY "Allow public insert guest orders"
   WITH CHECK (true);
 
 -- Admins can read/update all
+DROP POLICY IF EXISTS "Allow admin read all contact inquiries" ON public.contact_inquiries;
 CREATE POLICY "Allow admin read all contact inquiries"
   ON public.contact_inquiries
   FOR SELECT
   TO authenticated
   USING (true); -- You can add admin check here if needed
 
+DROP POLICY IF EXISTS "Allow admin update contact inquiries" ON public.contact_inquiries;
 CREATE POLICY "Allow admin update contact inquiries"
   ON public.contact_inquiries
   FOR UPDATE
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow admin read all guest orders" ON public.guest_orders;
 CREATE POLICY "Allow admin read all guest orders"
   ON public.guest_orders
   FOR SELECT
   TO authenticated
   USING (true);
 
+DROP POLICY IF EXISTS "Allow admin update guest orders" ON public.guest_orders;
 CREATE POLICY "Allow admin update guest orders"
   ON public.guest_orders
   FOR UPDATE

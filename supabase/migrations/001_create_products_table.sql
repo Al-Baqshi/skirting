@@ -30,7 +30,8 @@ CREATE INDEX IF NOT EXISTS idx_products_category ON public.products(category);
 -- Enable Row Level Security (RLS)
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
 
--- Create policy to allow public read access
+-- Create policy to allow public read access (drop first for idempotency)
+DROP POLICY IF EXISTS "Allow public read access" ON public.products;
 CREATE POLICY "Allow public read access" ON public.products
   FOR SELECT
   USING (true);
@@ -44,7 +45,8 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Create trigger to automatically update updated_at
+-- Create trigger to automatically update updated_at (drop first for idempotency)
+DROP TRIGGER IF EXISTS update_products_updated_at ON public.products;
 CREATE TRIGGER update_products_updated_at
   BEFORE UPDATE ON public.products
   FOR EACH ROW

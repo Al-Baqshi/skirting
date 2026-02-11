@@ -7,6 +7,7 @@ export type StorefrontProduct = {
   ledType: string
   height: string
   heightValue: number
+  heightOptions?: number[] // Multi-select: 40, 60, 80, 260, 300, 500 (4cm, 6cm, 8cm, 26cm, 30cm, 50cm). Default all six.
   profile: string
   power: string
   features: string[]
@@ -28,6 +29,7 @@ type DbProduct = {
   led_type: string | null
   height: string | null
   height_value: number | null
+  height_options: number[] | null
   profile: string | null
   power: string | null
   features: string[] | null
@@ -44,6 +46,22 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
+/**
+ * Converts old product image paths (e.g. /product/folder/1.png) to new SEO naming
+ * (/product/folder/folder-skirting-1.png). Idempotent: already-correct paths pass through.
+ */
+function normalizeProductImagePath(path: string | null | undefined): string {
+  if (!path || typeof path !== "string" || !path.trim()) return "/placeholder.svg"
+  const trimmed = path.trim()
+  if (!trimmed.startsWith("/product/") || trimmed.startsWith("http")) return trimmed
+  const match = trimmed.match(/^\/product\/([^/]+)\/([1-5])\.(png|jpg|jpeg|webp)$/i)
+  if (match) {
+    const [, folder, num, ext] = match
+    return `/product/${folder}/${folder}-skirting-${num}.${ext.toLowerCase()}`
+  }
+  return trimmed
+}
+
 function assertEnv() {
   if (!SUPABASE_URL) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL")
   if (!SUPABASE_ANON_KEY && !SUPABASE_SERVICE_ROLE_KEY) {
@@ -56,15 +74,24 @@ function mapDbProduct(row: DbProduct): StorefrontProduct {
   const normalizedCategory: StorefrontProduct["category"] =
     category === "smart" ? "smart" : category === "commercial" ? "commercial" : "residential"
 
+  const rawImages = row.images ?? []
+  const normalizedImages = Array.isArray(rawImages)
+    ? rawImages.map((p) => (p && String(p).trim() ? normalizeProductImagePath(p) : ""))
+    : undefined
+
   return {
     id: row.id,
     name: row.name,
     slug: row.slug,
-    image: row.image ?? "/placeholder.svg",
-    images: row.images ?? undefined,
+    image: (row.image && String(row.image).trim() ? normalizeProductImagePath(row.image) : null) ?? "/placeholder.svg",
+    images: normalizedImages && normalizedImages.length > 0 ? normalizedImages : undefined,
     ledType: row.led_type ?? "",
     height: row.height ?? "",
     heightValue: row.height_value ?? 0,
+    heightOptions:
+      Array.isArray(row.height_options) && row.height_options.length > 0
+        ? row.height_options
+        : [40, 60, 80, 260, 300, 500],
     profile: row.profile ?? "",
     power: row.power ?? "",
     features: row.features ?? [],
@@ -114,7 +141,7 @@ async function supabaseRest<T>(pathAndQuery: string): Promise<T> {
 }
 
 const SELECT_COLUMNS =
-  "id,name,slug,image,images,led_type,height,height_value,profile,power,features,price,description,category,seo_title,seo_description,meta_keywords,in_stock,is_active"
+  "id,name,slug,image,images,led_type,height,height_value,height_options,profile,power,features,price,description,category,seo_title,seo_description,meta_keywords,in_stock,is_active"
 
 export async function getSupabaseProducts(limit = 50, includeInactive = false): Promise<StorefrontProduct[]> {
   let query = `products?select=${encodeURIComponent(SELECT_COLUMNS)}&order=name.asc&limit=${limit}`

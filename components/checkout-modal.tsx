@@ -9,6 +9,7 @@ type CartItem = {
   id: string
   quantity: number
   length: number
+  height?: number
 }
 
 type CheckoutModalProps = {
@@ -70,6 +71,7 @@ export function CheckoutModal({
       quantity: qty,
       subtotal,
       image: product?.image || "",
+      height: item.height,
     }
   })
 
@@ -255,7 +257,12 @@ export function CheckoutModal({
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <h4 className="text-sm sm:text-base text-white font-medium truncate">{item.productName}</h4>
+                        <h4 className="text-sm sm:text-base text-white font-medium truncate">
+                          {item.productName}
+                          {item.height != null && (
+                            <span className="text-skirting-silver/70 font-normal ml-1">({item.height / 10}cm)</span>
+                          )}
+                        </h4>
                         <button
                           type="button"
                           onClick={() => removeItem(item.productId)}

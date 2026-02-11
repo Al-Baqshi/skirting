@@ -27,6 +27,7 @@ export function Header() {
               alt="Innovation Skirting Logo"
               width={240}
               height={67}
+              priority
               className="h-16 sm:h-20 w-auto"
             />
           </Link>

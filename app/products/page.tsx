@@ -8,20 +8,15 @@ import { Footer } from "@/components/footer"
 import { CheckoutModal } from "@/components/checkout-modal"
 import type { StorefrontProduct } from "@/lib/supabase-products"
 
-const ledTypes = ["All", "Warm White", "Cool White", "RGB", "Tunable White"]
-const heights = ["All", "60mm", "80mm", "100mm", "120mm", "150mm", "200mm"]
-const categories = ["All", "Residential", "Smart", "Commercial"]
-const featureOptions = ["Motion Sensor", "Dimmable", "WiFi", "App Control", "USB Port", "Power Outlet"]
+const ledPresence = ["All", "With LED", "Without LED"]
+const heights = ["All", "4cm", "6cm", "8cm", "26cm", "30cm", "50cm"]
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<StorefrontProduct[]>([])
   const [loadError, setLoadError] = useState<string | null>(null)
   const [filters, setFilters] = useState({
-    ledType: "All",
+    led: "All",
     height: "All",
-    category: "All",
-    features: [] as string[],
-    priceRange: [0, 500] as [number, number],
     search: "",
   })
 
@@ -58,11 +53,22 @@ export default function ProductsPage() {
   // Filter products
   const filteredProducts = useMemo(() => {
     const result = products.filter((product) => {
-      if (filters.ledType !== "All" && product.ledType !== filters.ledType) return false
-      if (filters.height !== "All" && product.height !== filters.height) return false
-      if (filters.category !== "All" && product.category !== filters.category.toLowerCase()) return false
-      if (product.price < filters.priceRange[0] || product.price > filters.priceRange[1]) return false
-      if (filters.features.length > 0 && !filters.features.some((f) => product.features.includes(f))) return false
+      if (filters.led !== "All") {
+        const productHasLed = product.ledType?.toLowerCase() !== "without led"
+        if ((filters.led === "With LED" && !productHasLed) || (filters.led === "Without LED" && productHasLed)) {
+          return false
+        }
+      }
+      if (filters.height !== "All") {
+        const opts =
+          product.heightOptions && product.heightOptions.length > 0
+            ? product.heightOptions
+            : product.heightValue
+              ? [product.heightValue]
+              : [40, 60, 80, 260, 300, 500]
+        const filterVal = filters.height === "4cm" ? 40 : filters.height === "6cm" ? 60 : filters.height === "8cm" ? 80 : filters.height === "26cm" ? 260 : filters.height === "30cm" ? 300 : filters.height === "50cm" ? 500 : null
+        if (filterVal !== null && !opts.includes(filterVal)) return false
+      }
       if (filters.search && !product.name.toLowerCase().includes(filters.search.toLowerCase())) return false
       return true
     })
@@ -75,17 +81,17 @@ export default function ProductsPage() {
     return result
   }, [filters, sortBy, products])
 
-  const addToCart = (productId: string) => {
+  const addToCart = (productId: string, height = 80) => {
     const qty = quantities[productId] || 1
     const len = lengths[productId] || 1
     setCart((prev) => {
       const existing = prev.find((item) => item.id === productId)
       if (existing) {
         return prev.map((item) =>
-          item.id === productId ? { ...item, quantity: item.quantity + qty, length: len } : item,
+          item.id === productId ? { ...item, quantity: item.quantity + qty, length: len, height } : item,
         )
       }
-      return [...prev, { id: productId, quantity: qty, length: len }]
+      return [...prev, { id: productId, quantity: qty, length: len, height }]
     })
   }
 
@@ -115,32 +121,15 @@ export default function ProductsPage() {
     return sum + (product?.price || 0) * item.length * item.quantity
   }, 0)
 
-  const toggleFeature = (feature: string) => {
-    setFilters((prev) => ({
-      ...prev,
-      features: prev.features.includes(feature)
-        ? prev.features.filter((f) => f !== feature)
-        : [...prev.features, feature],
-    }))
-  }
-
   const clearFilters = () => {
     setFilters({
-      ledType: "All",
+      led: "All",
       height: "All",
-      category: "All",
-      features: [],
-      priceRange: [0, 500],
       search: "",
     })
   }
 
-  const activeFilterCount =
-    (filters.ledType !== "All" ? 1 : 0) +
-    (filters.height !== "All" ? 1 : 0) +
-    (filters.category !== "All" ? 1 : 0) +
-    filters.features.length +
-    (filters.priceRange[0] > 0 || filters.priceRange[1] < 500 ? 1 : 0)
+  const activeFilterCount = (filters.led !== "All" ? 1 : 0) + (filters.height !== "All" ? 1 : 0) + (filters.search ? 1 : 0)
 
   return (
     <div className="min-h-screen bg-skirting-dark">
@@ -215,42 +204,22 @@ export default function ProductsPage() {
                 />
               </div>
 
-              {/* Category */}
+              {/* LED Presence */}
               <div className="mb-6">
-                <label className="text-skirting-silver text-sm mb-3 block">Category</label>
-                <div className="flex flex-wrap gap-2">
-                  {categories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setFilters((prev) => ({ ...prev, category: cat }))}
-                      className={`px-3 py-1.5 rounded-lg text-sm transition-all ${
-                        filters.category === cat
-                          ? "bg-skirting-amber text-skirting-dark font-medium"
-                          : "bg-skirting-dark text-skirting-silver hover:bg-white/10"
-                      }`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* LED Type */}
-              <div className="mb-6">
-                <label className="text-skirting-silver text-sm mb-3 block">LED Type</label>
+                <label className="text-skirting-silver text-sm mb-3 block">LED</label>
                 <div className="space-y-2">
-                  {ledTypes.map((type) => (
+                  {ledPresence.map((type) => (
                     <button
                       key={type}
-                      onClick={() => setFilters((prev) => ({ ...prev, ledType: type }))}
+                      onClick={() => setFilters((prev) => ({ ...prev, led: type }))}
                       className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all flex items-center justify-between ${
-                        filters.ledType === type
+                        filters.led === type
                           ? "bg-skirting-amber/10 text-skirting-amber border border-skirting-amber/30"
                           : "bg-skirting-dark text-skirting-silver hover:bg-white/5"
                       }`}
                     >
                       {type}
-                      {filters.ledType === type && (
+                      {filters.led === type && (
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
@@ -276,77 +245,7 @@ export default function ProductsPage() {
                 </select>
               </div>
 
-              {/* Price Range */}
-              <div className="mb-6">
-                <label className="text-skirting-silver text-sm mb-3 block">
-                  Price Range: ${filters.priceRange[0]} - ${filters.priceRange[1]}
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="number"
-                    min="0"
-                    max="500"
-                    value={filters.priceRange[0]}
-                    onChange={(e) =>
-                      setFilters((prev) => ({ ...prev, priceRange: [Number(e.target.value), prev.priceRange[1]] }))
-                    }
-                    className="w-full bg-skirting-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-skirting-amber focus:outline-none"
-                    placeholder="Min"
-                  />
-                  <span className="text-skirting-silver self-center">-</span>
-                  <input
-                    type="number"
-                    min="0"
-                    max="500"
-                    value={filters.priceRange[1]}
-                    onChange={(e) =>
-                      setFilters((prev) => ({ ...prev, priceRange: [prev.priceRange[0], Number(e.target.value)] }))
-                    }
-                    className="w-full bg-skirting-dark border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-skirting-amber focus:outline-none"
-                    placeholder="Max"
-                  />
-                </div>
-              </div>
-
-              {/* Features */}
-              <div>
-                <label className="text-skirting-silver text-sm mb-3 block">Features</label>
-                <div className="space-y-2">
-                  {featureOptions.map((feature) => (
-                    <label key={feature} className="flex items-center gap-3 cursor-pointer group">
-                      <div
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                          filters.features.includes(feature)
-                            ? "bg-skirting-amber border-skirting-amber"
-                            : "border-skirting-silver/40 group-hover:border-skirting-silver"
-                        }`}
-                      >
-                        {filters.features.includes(feature) && (
-                          <svg
-                            className="w-3 h-3 text-skirting-dark"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                            strokeWidth={3}
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                      <span
-                        className={`text-sm transition-colors ${
-                          filters.features.includes(feature)
-                            ? "text-white"
-                            : "text-skirting-silver group-hover:text-white"
-                        }`}
-                        onClick={() => toggleFeature(feature)}
-                      >
-                        {feature}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <div className="text-skirting-silver/70 text-xs">Simple filters: choose height or LED presence.</div>
             </div>
           </aside>
 
@@ -401,36 +300,33 @@ export default function ProductsPage() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
                 {filteredProducts.map((product) => (
                   <div
                     key={product.id}
                     className="bg-skirting-charcoal border border-white/10 rounded-2xl overflow-hidden group hover:border-skirting-amber/50 transition-all duration-300"
                   >
-                    <div className="relative aspect-[4/3] overflow-hidden">
+                  <div className="relative aspect-4/3 overflow-hidden">
                       <Link href={`/products/${product.slug}`} className="block">
-                        <div className="relative aspect-[4/3] overflow-hidden cursor-pointer">
+                        <div className="relative aspect-4/3 overflow-hidden cursor-pointer">
                           {(() => {
                             const images = getProductImages(product)
                             const currentIndex = imageIndexes[product.id] ?? 0
                             const currentImage = images[currentIndex]
 
-                            return currentImage && (currentImage.startsWith("/") || currentImage.startsWith("http")) ? (
+                            return (
                               <Image
-                                src={currentImage}
+                                src={(currentImage && (currentImage.startsWith("/") || currentImage.startsWith("http")) ? currentImage : "/placeholder.svg")}
                                 alt={product.name}
                                 fill
+                                sizes="(max-width: 768px) 100vw, 400px"
                                 className="object-cover group-hover:scale-105 transition-transform duration-500"
-                                unoptimized={currentImage.startsWith("http")}
+                                unoptimized={currentImage?.startsWith("http") ?? false}
                               />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-skirting-silver/50 bg-skirting-dark">
-                                <span>No Image</span>
-                              </div>
                             )
                           })()}
                           <div className="absolute top-3 right-3 bg-skirting-amber text-skirting-dark px-2 py-1 text-xs uppercase tracking-wider font-medium rounded">
-                            {product.ledType}
+                            {product.ledType?.toLowerCase() === "without led" ? "Without LED" : "With LED"}
                           </div>
                           <div className="absolute top-3 left-3 bg-skirting-dark/80 text-white px-2 py-1 text-xs uppercase tracking-wider rounded">
                             {product.category}
@@ -494,22 +390,6 @@ export default function ProductsPage() {
 
                       <div className="flex flex-wrap gap-1.5 mb-3 text-xs text-skirting-silver/60">
                         <span className="bg-white/5 px-2 py-0.5 rounded">{product.height}</span>
-                        <span className="bg-white/5 px-2 py-0.5 rounded">{product.profile}</span>
-                        <span className="bg-white/5 px-2 py-0.5 rounded">{product.power}</span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-1.5 mb-4">
-                        {product.features.slice(0, 3).map((feature, i) => (
-                          <span
-                            key={i}
-                            className="bg-skirting-amber/10 text-skirting-amber text-xs px-2 py-0.5 rounded-full"
-                          >
-                            {feature}
-                          </span>
-                        ))}
-                        {product.features.length > 3 && (
-                          <span className="text-skirting-silver/60 text-xs">+{product.features.length - 3} more</span>
-                        )}
                       </div>
 
                       {/* Controls */}

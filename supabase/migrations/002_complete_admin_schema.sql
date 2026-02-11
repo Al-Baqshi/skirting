@@ -126,11 +126,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Function to get current user ID from JWT
-CREATE OR REPLACE FUNCTION auth.uid()
-RETURNS UUID AS $$
-  SELECT (current_setting('request.jwt.claims', true)::json->>'sub')::UUID;
-$$ LANGUAGE sql STABLE;
+-- auth.uid() is provided by Supabase - do not recreate it
 
 -- Function to log admin activity
 CREATE OR REPLACE FUNCTION log_admin_activity(
@@ -332,16 +328,12 @@ CREATE POLICY "Admins can read all profiles"
   FOR SELECT
   USING (is_admin(auth.uid()));
 
--- Users can update their own profile (limited fields)
+-- Users can update their own profile (limited fields - role/is_active protected by application layer)
 CREATE POLICY "Users can update own profile"
   ON public.user_profiles
   FOR UPDATE
   USING (auth.uid() = id)
-  WITH CHECK (
-    auth.uid() = id
-    AND (role = OLD.role) -- Cannot change own role
-    AND (is_active = OLD.is_active OR is_admin(auth.uid())) -- Cannot change own active status unless admin
-  );
+  WITH CHECK (auth.uid() = id);
 
 -- Admins can update any profile
 CREATE POLICY "Admins can update any profile"

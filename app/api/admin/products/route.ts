@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const { data: products, error } = await supabase
+    const { data: rows, error } = await supabase
       .from("products")
       .select("*")
       .order("created_at", { ascending: false })
@@ -24,7 +24,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ products: products || [] })
+    // Map snake_case to camelCase so admin form and list get consistent data (edit form pre-fills correctly)
+    const products = (rows || []).map((row: Record<string, unknown>) => ({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      image: row.image ?? "",
+      images: Array.isArray(row.images) ? row.images : row.image ? [row.image] : [],
+      ledType: row.led_type ?? "",
+      height: row.height ?? "",
+      heightValue: row.height_value ?? null,
+      heightOptions:
+        Array.isArray(row.height_options) && row.height_options.length > 0
+          ? row.height_options
+          : [40, 60, 80, 260, 300, 500],
+      profile: row.profile ?? "",
+      power: row.power ?? "",
+      features: row.features ?? [],
+      price: row.price ?? 0,
+      description: row.description ?? "",
+      category: row.category ?? "residential",
+      seoTitle: row.seo_title ?? "",
+      seoDescription: row.seo_description ?? "",
+      metaKeywords: row.meta_keywords ?? [],
+      inStock: row.in_stock !== false,
+      is_active: row.is_active !== false,
+    }))
+
+    return NextResponse.json({ products })
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },
@@ -49,6 +76,7 @@ export async function POST(request: NextRequest) {
       ledType,
       height,
       heightValue,
+      heightOptions,
       profile,
       power,
       features = [],
@@ -108,8 +136,10 @@ export async function POST(request: NextRequest) {
       slug,
       image: image || (images && images[0]) || null,
       led_type: ledType || null,
-      height: height || null,
-      height_value: heightValue || null,
+      height: height || "4cm / 6cm / 8cm / 26cm / 30cm / 50cm",
+      height_value: heightValue ?? 80,
+      height_options:
+        Array.isArray(heightOptions) && heightOptions.length > 0 ? heightOptions : [40, 60, 80, 260, 300, 500],
       profile: profile || null,
       power: power || null,
       features: features || [],
@@ -123,13 +153,13 @@ export async function POST(request: NextRequest) {
       is_active: isActive !== false,
     }
     
-    // Add images if provided (will fail silently if column doesn't exist)
-    // To enable: ALTER TABLE products ADD COLUMN images TEXT[] DEFAULT '{}';
-    if (images && Array.isArray(images) && images.length > 0) {
-      insertData.images = images
-    } else if (image) {
-      insertData.images = [image]
-    }
+    // Normalize images to 5 slots (Main, Params, Install, Accessories, Colours)
+    const rawImages = Array.isArray(images) ? images : image ? [image] : []
+    const normalizedImages = Array.from({ length: 5 }, (_, i) => {
+      const v = rawImages[i]
+      return typeof v === "string" && v.trim() ? v.trim() : ""
+    })
+    insertData.images = normalizedImages
 
     const { data: product, error } = await supabase
       .from("products")

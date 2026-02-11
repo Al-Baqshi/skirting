@@ -239,19 +239,15 @@ export default function Page() {
                 className="group bg-skirting-charcoal border border-skirting-silver/10 hover:border-skirting-amber/30 transition-all duration-300 overflow-hidden rounded-xl"
               >
                 <div className="aspect-[4/3] relative overflow-hidden bg-skirting-dark">
-                  {product.image && (product.image.startsWith("/") || product.image.startsWith("http")) ? (
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      unoptimized={product.image.startsWith("http")}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-skirting-silver/50">
-                      <span>No Image</span>
-                    </div>
-                  )}
+                  <Image
+                    src={(product.image && (product.image.startsWith("/") || product.image.startsWith("http")) ? product.image : "/placeholder.svg")}
+                    alt={product.name}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 400px"
+                    priority
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    unoptimized={product.image?.startsWith("http") ?? false}
+                  />
                 </div>
                 <div className="p-4 sm:p-5">
                   <div className="flex justify-between items-start mb-2">
