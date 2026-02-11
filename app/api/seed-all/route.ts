@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
       led_type: "With LED",
       height: "8cm",
       height_value: 80,
-      height_options: [40, 60, 80, 260, 300, 500],
+      height_options: [40, 60, 80, 26, 30, 50],
       profile: "Inset light strip",
       power: "12V DC",
       features: ["Recessed LED channel", "Flush design", "Aluminium"],
