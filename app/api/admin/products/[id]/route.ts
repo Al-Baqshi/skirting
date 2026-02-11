@@ -116,7 +116,7 @@ export async function PATCH(
       }
       updateData.slug = slug
     }
-    if (image !== undefined) updateData.image = image || (images && images[0]) || null
+    if (image !== undefined) updateData.image = image || (Array.isArray(images) && images[0]) || null
     // Always persist images array when provided (5 slots: Main, Params, Install, Accessories, Colours)
     if (images !== undefined) {
       const arr = Array.isArray(images) ? images : image ? [image] : []
@@ -150,10 +150,11 @@ export async function PATCH(
     }
     if (description !== undefined) updateData.description = description || null
     if (category !== undefined) {
-      if (!["residential", "smart", "commercial"].includes(category)) {
+      const cat = typeof category === "string" ? category : ""
+      if (!["residential", "smart", "commercial"].includes(cat)) {
         return NextResponse.json({ error: "Category must be one of: residential, smart, commercial" }, { status: 400 })
       }
-      updateData.category = category
+      updateData.category = cat
     }
     if (seoTitle !== undefined) updateData.seo_title = seoTitle || null
     if (seoDescription !== undefined)
