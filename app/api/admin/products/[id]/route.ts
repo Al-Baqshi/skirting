@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { verifyAdminAuth } from "@/lib/admin-auth"
 
+const SELECT_LEGACY =
+  "id,name,slug,image,images,led_type,height,height_value,height_options,profile,power,features,price,description,category,seo_title,seo_description,meta_keywords,in_stock,is_active,created_at,updated_at"
+
 function getSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -24,15 +27,16 @@ export async function GET(
   try {
     const supabase = getSupabase()
     const { id } = await params
-    const { data: product, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("id", id)
-      .single()
+    let result = await supabase.from("products").select("*").eq("id", id).single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (result.error && (result.error.message?.includes("colors") || result.error.message?.includes("price_by_height") || result.error.message?.includes("schema cache"))) {
+      result = await supabase.from("products").select(SELECT_LEGACY).eq("id", id).single()
     }
+
+    if (result.error) {
+      return NextResponse.json({ error: result.error.message }, { status: 500 })
+    }
+    const product = result.data
 
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 })
@@ -76,8 +80,10 @@ export async function PATCH(
       power,
       features,
       price,
+      priceByHeight,
       description,
       category,
+      colors,
       seoTitle,
       seoDescription,
       metaKeywords,
@@ -136,8 +142,9 @@ export async function PATCH(
       updateData.height_value = heightValue || null
     }
     if (heightOptions !== undefined) {
-      const opts = Array.isArray(heightOptions) ? heightOptions.filter((n) => [40, 60, 80, 260, 300, 500].includes(n)) : [40, 60, 80, 260, 300, 500]
-      updateData.height_options = opts.length > 0 ? opts : [40, 60, 80, 260, 300, 500]
+      const ALL_HEIGHTS = [30, 40, 50, 60, 70, 80, 90, 100, 260]
+      const opts = Array.isArray(heightOptions) ? heightOptions.filter((n) => ALL_HEIGHTS.includes(n)) : ALL_HEIGHTS
+      updateData.height_options = opts.length > 0 ? opts : ALL_HEIGHTS
     }
     if (profile !== undefined) updateData.profile = profile || null
     if (power !== undefined) updateData.power = power || null
@@ -147,6 +154,15 @@ export async function PATCH(
         return NextResponse.json({ error: "Price must be a non-negative number" }, { status: 400 })
       }
       updateData.price = price
+    }
+    if (priceByHeight !== undefined) {
+      updateData.price_by_height =
+        priceByHeight && typeof priceByHeight === "object" && Object.keys(priceByHeight).length > 0
+          ? priceByHeight
+          : null
+    }
+    if (colors !== undefined) {
+      updateData.colors = Array.isArray(colors) ? colors.filter((c: unknown) => typeof c === "string" && String(c).trim() !== "") : []
     }
     if (description !== undefined) updateData.description = description || null
     if (category !== undefined) {
@@ -163,18 +179,19 @@ export async function PATCH(
     if (inStock !== undefined) updateData.in_stock = inStock
     if (isActive !== undefined) updateData.is_active = isActive
 
-    const { data: product, error } = await supabase
-      .from("products")
-      .update(updateData)
-      .eq("id", id)
-      .select()
-      .single()
+    let result = await supabase.from("products").update(updateData).eq("id", id).select().single()
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+    if (result.error && (result.error.message?.includes("colors") || result.error.message?.includes("price_by_height") || result.error.message?.includes("schema cache"))) {
+      delete updateData.price_by_height
+      delete updateData.colors
+      result = await supabase.from("products").update(updateData).eq("id", id).select().single()
     }
 
-    return NextResponse.json({ product })
+    if (result.error) {
+      return NextResponse.json({ error: result.error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ product: result.data })
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error"
     return NextResponse.json({ error: message }, { status: 500 })

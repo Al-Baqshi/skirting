@@ -219,3 +219,11 @@ export function getProductSectionLabels(slug: string): readonly [string, string,
 export function getFourSectionSlugs(): string[] {
   return Object.keys(catalog)
 }
+
+/** Colours to show for a product: only what you save in Admin (per product). No generic defaults. */
+export function getDisplayColors(product: { slug: string; colors?: string[] | null }): string[] {
+  if (product.colors && Array.isArray(product.colors) && product.colors.length > 0) {
+    return product.colors.filter((c): c is string => typeof c === "string" && c.trim() !== "")
+  }
+  return []
+}

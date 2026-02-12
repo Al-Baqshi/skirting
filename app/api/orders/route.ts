@@ -26,14 +26,15 @@ export async function POST(request: NextRequest) {
     const orderNumber = `ORD-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`
     const totalAmount = parseFloat(total)
 
-    // Prepare items for storage
-    const orderItems = items.map((item: any) => ({
+    // Prepare items for storage (include color when present for quote)
+    const orderItems = items.map((item: { productName?: string; productSlug?: string; price?: number; length?: number; quantity?: number; subtotal?: number; color?: string }) => ({
       productName: item.productName,
       productSlug: item.productSlug,
       price: item.price,
       length: item.length,
       quantity: item.quantity,
       subtotal: item.subtotal,
+      color: item.color ?? null,
     }))
 
     // Store in Supabase database (PRIMARY METHOD)
@@ -150,11 +151,11 @@ function generateOrderEmail(orderData: any): string {
     .map(
       (item: any) => `
     <tr>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.productName}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.productName}${item.color ? ` (${item.color})` : ""}</td>
       <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.length}m</td>
       <td style="padding: 8px; border-bottom: 1px solid #ddd;">${item.quantity}</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">$${item.price.toFixed(2)}/m</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">$${item.subtotal.toFixed(2)}</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">$${typeof item.price === "number" ? item.price.toFixed(2) : "0.00"}/m</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">$${typeof item.subtotal === "number" ? item.subtotal.toFixed(2) : "0.00"}</td>
     </tr>
   `
     )

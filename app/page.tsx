@@ -146,7 +146,7 @@ export default function Page() {
           <div className="text-center mb-8 sm:mb-12">
             <span className="text-skirting-amber text-xs sm:text-sm font-bold uppercase tracking-widest">Explore</span>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-skirting-silver mt-3 sm:mt-4 tracking-tight">
-              Discover Innovation Skirting
+              Discover Our Skirting Boards
             </h2>
           </div>
 
@@ -188,7 +188,7 @@ export default function Page() {
                 </svg>
               </div>
               <h3 className="text-lg sm:text-xl font-semibold text-skirting-silver mb-2">Installation</h3>
-              <p className="text-skirting-silver/60 text-sm sm:text-base leading-relaxed">Professional or DIY installation options available</p>
+              <p className="text-skirting-silver/60 text-sm sm:text-base leading-relaxed">Professional or DIY skirting board installation nationwide</p>
             </Link>
 
             <Link
@@ -201,7 +201,7 @@ export default function Page() {
                 </svg>
               </div>
               <h3 className="text-lg sm:text-xl font-semibold text-skirting-silver mb-2">Contact</h3>
-              <p className="text-skirting-silver/60 text-sm sm:text-base leading-relaxed">Get in touch for quotes and expert advice</p>
+              <p className="text-skirting-silver/60 text-sm sm:text-base leading-relaxed">Get in touch for skirting quotes and expert advice</p>
             </Link>
           </div>
         </div>
@@ -241,7 +241,7 @@ export default function Page() {
                 <div className="aspect-[4/3] relative overflow-hidden bg-skirting-dark">
                   <Image
                     src={(product.image && (product.image.startsWith("/") || product.image.startsWith("http")) ? product.image : "/placeholder.svg")}
-                    alt={product.name}
+                    alt={`${product.name} - Skirting board NZ`}
                     fill
                     sizes="(max-width: 768px) 100vw, 400px"
                     priority

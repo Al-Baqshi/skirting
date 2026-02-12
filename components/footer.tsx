@@ -23,7 +23,7 @@ export function Footer() {
               className="h-16 sm:h-20 w-auto"
             />
             <p className="text-skirting-silver/40 text-xs sm:text-sm text-center sm:text-left">
-              © 2024 Innovation Skirting. All rights reserved.
+              © 2024 Innovation Skirting. Premium LED and aluminium skirting boards in New Zealand. All rights reserved.
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">

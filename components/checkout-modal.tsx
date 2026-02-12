@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react"
 import { X } from "lucide-react"
 import { toast } from "sonner"
-import type { StorefrontProduct } from "@/lib/supabase-products"
+import { getPriceForHeight, type StorefrontProduct } from "@/lib/supabase-products"
 
-type CartItem = {
+export type CartItem = {
   id: string
   quantity: number
   length: number
   height?: number
+  color?: string
 }
 
 type CheckoutModalProps = {
@@ -54,12 +55,13 @@ export function CheckoutModal({
     setLocalLengths(lengths)
   }, [cart, quantities, lengths])
 
-  // Calculate cart items with product details
+  // Calculate cart items with product details (price by height when available)
   const cartItems = localCart.map((item) => {
     const product = products.find((p) => p.id === item.id)
     const qty = localQuantities[item.id] || item.quantity
     const len = localLengths[item.id] || item.length
-    const price = product?.price || 0
+    const heightVal = item.height ?? product?.heightOptions?.[0] ?? 50
+    const price = product ? getPriceForHeight(product, heightVal) : 0
     const subtotal = price * len * qty
 
     return {
@@ -72,10 +74,15 @@ export function CheckoutModal({
       subtotal,
       image: product?.image || "",
       height: item.height,
+      color: item.color,
     }
   })
 
   const total = cartItems.reduce((sum, item) => sum + item.subtotal, 0)
+  const MIN_ORDER_METERS = 1
+  const SHOW_PRICE = false
+  const totalMeters = cartItems.reduce((sum, item) => sum + item.length * item.quantity, 0)
+  const meetsMinOrder = true
 
   // Update cart item quantity
   const updateQuantity = (productId: string, newQuantity: number) => {
@@ -94,7 +101,7 @@ export function CheckoutModal({
 
   // Update cart item length
   const updateLength = (productId: string, newLength: number) => {
-    if (newLength < 0.1) return
+    if (newLength < 1) return
     setLocalLengths((prev) => ({ ...prev, [productId]: newLength }))
     setLocalCart((prev) =>
       prev.map((item) => (item.id === productId ? { ...item, length: newLength } : item))
@@ -262,6 +269,9 @@ export function CheckoutModal({
                           {item.height != null && (
                             <span className="text-skirting-silver/70 font-normal ml-1">({item.height / 10}cm)</span>
                           )}
+                          {item.color && (
+                            <span className="text-skirting-silver/70 font-normal ml-1"> · {item.color}</span>
+                          )}
                         </h4>
                         <button
                           type="button"
@@ -283,10 +293,10 @@ export function CheckoutModal({
                           <div className="flex items-center gap-1 flex-1 sm:flex-none min-w-0">
                             <input
                               type="number"
-                              min="0.1"
-                              step="0.1"
+                              min={1}
+                              step="1"
                               value={item.length}
-                              onChange={(e) => updateLength(item.productId, parseFloat(e.target.value) || 0.1)}
+                              onChange={(e) => updateLength(item.productId, Math.max(1, parseFloat(e.target.value) || 1))}
                               className="w-20 sm:w-16 bg-skirting-charcoal border border-white/10 rounded px-2 py-2 text-white text-sm focus:border-skirting-amber focus:outline-none flex-shrink-0"
                             />
                             <span className="text-skirting-silver/60 text-xs whitespace-nowrap flex-shrink-0">m</span>
@@ -315,22 +325,34 @@ export function CheckoutModal({
                             </button>
                           </div>
                         </div>
-                        <span className="text-skirting-silver/60 text-xs ml-auto sm:ml-0 whitespace-nowrap flex-shrink-0">@ ${item.price}/m</span>
+                        {SHOW_PRICE && <span className="text-skirting-silver/60 text-xs ml-auto sm:ml-0 whitespace-nowrap shrink-0">@ ${item.price}/m</span>}
                       </div>
                       
-                      <div className="text-right sm:text-left">
-                        <p className="text-skirting-amber font-semibold text-sm sm:text-base">${item.subtotal.toFixed(2)}</p>
-                      </div>
+                      {SHOW_PRICE && (
+                        <div className="text-right sm:text-left">
+                          <p className="text-skirting-amber font-semibold text-sm sm:text-base">${item.subtotal.toFixed(2)}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))
               )}
             </div>
             {cartItems.length > 0 && (
-              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-white/10 flex items-center justify-between">
-                <span className="text-base sm:text-lg font-semibold text-white">Total</span>
-                <span className="text-xl sm:text-2xl font-bold text-skirting-amber">${total.toFixed(2)}</span>
-              </div>
+              <>
+                <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-white/10 flex flex-col gap-1">
+                  <div className="flex items-center justify-between text-skirting-silver/80 text-sm">
+                    <span>Total length</span>
+                    <span>{totalMeters}m</span>
+                  </div>
+                  {SHOW_PRICE && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-base sm:text-lg font-semibold text-white">Total (NZD)</span>
+                      <span className="text-xl sm:text-2xl font-bold text-skirting-amber">${total.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
 
@@ -438,7 +460,7 @@ export function CheckoutModal({
             <button
               type="submit"
               form="checkout-form"
-              disabled={submitting || cartItems.length === 0}
+              disabled={submitting || cartItems.length === 0 || !meetsMinOrder}
               className="w-full sm:flex-1 px-4 sm:px-6 py-3 bg-skirting-amber text-skirting-dark font-semibold uppercase tracking-wide hover:bg-white transition-colors rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base touch-target"
             >
               {submitting ? "Submitting..." : "Submit Order"}

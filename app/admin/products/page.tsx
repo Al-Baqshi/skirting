@@ -12,6 +12,8 @@ import type { StorefrontProduct } from "@/lib/supabase-products"
 type Product = StorefrontProduct & {
   is_active?: boolean
   heightOptions?: number[]
+  priceByHeight?: Record<string, number>
+  colors?: string[]
 }
 
 function AdminProductsPageContent() {
@@ -31,31 +33,40 @@ function AdminProductsPageContent() {
   const SLOT_KEYS = IMAGE_SLOTS.map((s) => s.key)
 
   const HEIGHT_OPTIONS = [
+    { value: 30, label: "3cm" },
     { value: 40, label: "4cm" },
+    { value: 50, label: "5cm" },
     { value: 60, label: "6cm" },
+    { value: 70, label: "7cm" },
     { value: 80, label: "8cm" },
+    { value: 90, label: "9cm" },
+    { value: 100, label: "10cm" },
     { value: 260, label: "26cm" },
-    { value: 300, label: "30cm" },
-    { value: 500, label: "50cm" },
   ] as const
+  const DEFAULT_HEIGHT_OPTS: number[] = HEIGHT_OPTIONS.map((o) => o.value)
   const [formData, setFormData] = useState<
-    Partial<Product & { imageSlots?: string[]; hasLed?: boolean; heightOptions?: number[] }>
+    Partial<Product & { imageSlots?: string[]; hasLed?: boolean; heightOptions?: number[]; priceByHeight?: Record<string, number> }>
   >({
     name: "",
     image: "",
     imageSlots: ["", "", "", "", ""],
     hasLed: true,
-    height: "4cm / 6cm / 8cm / 26cm / 30cm / 50cm",
-    heightOptions: [40, 60, 80, 260, 300, 500],
+    height: "3cm / 4cm / 5cm / 6cm / 7cm / 8cm / 9cm / 10cm / 26cm",
+    heightOptions: [...DEFAULT_HEIGHT_OPTS],
     price: 0,
+    priceByHeight: {},
     description: "",
     category: "residential",
+    colors: [],
     seoTitle: "",
     seoDescription: "",
     metaKeywords: [],
     inStock: true,
     is_active: true,
   })
+  const [filterLed, setFilterLed] = useState<"All" | "With LED" | "Without LED">("All")
+  const [filterCategory, setFilterCategory] = useState<"All" | "residential" | "smart" | "commercial">("All")
+  const [newColor, setNewColor] = useState("")
   const [newKeyword, setNewKeyword] = useState("")
   const [showImageBrowser, setShowImageBrowser] = useState(false)
   const [imageBrowserSlot, setImageBrowserSlot] = useState<number | null>(null)
@@ -69,7 +80,68 @@ function AdminProductsPageContent() {
   const [productSearch, setProductSearch] = useState("")
   const [showImageViewer, setShowImageViewer] = useState(false)
   const [imageViewerIndex, setImageViewerIndex] = useState(0)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkPrice, setBulkPrice] = useState("")
+  const [bulkPriceSubmitting, setBulkPriceSubmitting] = useState(false)
   const formRef = useRef<HTMLDivElement>(null)
+
+  const filteredProducts = products.filter((p) => {
+    if (productSearch.trim() && !p.name.toLowerCase().includes(productSearch.trim().toLowerCase())) return false
+    if (filterLed !== "All") {
+      const hasLed = p.ledType?.toLowerCase() !== "without led"
+      if (filterLed === "With LED" && !hasLed) return false
+      if (filterLed === "Without LED" && hasLed) return false
+    }
+    if (filterCategory !== "All" && (p.category ?? "residential") !== filterCategory) return false
+    return true
+  })
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+  const selectAllFiltered = () => {
+    setSelectedIds(new Set(filteredProducts.map((p) => p.id)))
+  }
+  const clearSelection = () => {
+    setSelectedIds(new Set())
+    setBulkPrice("")
+  }
+  const handleBulkPriceApply = async () => {
+    const price = Number(bulkPrice)
+    if (!Number.isFinite(price) || price < 0) {
+      toast.error("Enter a valid price (number ≥ 0)")
+      return
+    }
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) {
+      toast.error("Select at least one product")
+      return
+    }
+    setBulkPriceSubmitting(true)
+    try {
+      let failed = 0
+      for (const id of ids) {
+        const res = await fetch(`/api/admin/products/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ price }),
+        })
+        if (!res.ok) failed++
+      }
+      if (failed > 0) toast.error(`Updated ${ids.length - failed} of ${ids.length}. ${failed} failed.`)
+      else toast.success(`Price set to $${price}/m for ${ids.length} product${ids.length === 1 ? "" : "s"}.`)
+      await loadProducts()
+      clearSelection()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update prices")
+    } finally {
+      setBulkPriceSubmitting(false)
+    }
+  }
 
   const openImageViewer = (index: number) => {
     setImageViewerIndex(Math.max(0, Math.min(4, index)))
@@ -141,8 +213,11 @@ function AdminProductsPageContent() {
       toast.error("At least one height option is required")
       return
     }
-    if (!formData.price || formData.price <= 0) {
-      toast.error("Price must be greater than 0")
+    const hasDefaultPrice = (formData.price ?? 0) > 0
+    const priceByHeight = formData.priceByHeight ?? {}
+    const hasPriceByHeight = Object.values(priceByHeight).some((v) => typeof v === "number" && v > 0)
+    if (!hasDefaultPrice && !hasPriceByHeight) {
+      toast.error("Set either a default price or at least one price per size (NZD/m)")
       return
     }
     if (!formData.description?.trim()) {
@@ -164,11 +239,17 @@ function AdminProductsPageContent() {
             image: getPrimaryImage(),
             images: imagesToSave,
             ledType: ledLabel,
-            height: (formData.heightOptions ?? []).sort((a, b) => a - b).map((h) => `${h / 10}cm`).join(" / ") || "4cm / 6cm / 8cm / 26cm / 30cm / 50cm",
-            heightOptions: formData.heightOptions ?? [40, 60, 80, 260, 300, 500],
+            height: (formData.heightOptions ?? []).sort((a, b) => a - b).map((h) => `${h / 10}cm`).join(" / ") || "3cm / 4cm / 5cm / 6cm / 7cm / 8cm / 9cm / 10cm / 26cm",
+            heightOptions: formData.heightOptions ?? DEFAULT_HEIGHT_OPTS,
             price: formData.price,
+            priceByHeight: (() => {
+              const p = formData.priceByHeight ?? {}
+              const filtered = Object.fromEntries(Object.entries(p).filter(([, v]) => typeof v === "number" && v > 0))
+              return Object.keys(filtered).length > 0 ? filtered : undefined
+            })(),
             description: formData.description,
             category: formData.category,
+            colors: formData.colors ?? [],
             seoTitle: formData.seoTitle,
             seoDescription: formData.seoDescription,
             metaKeywords: formData.metaKeywords || [],
@@ -203,11 +284,17 @@ function AdminProductsPageContent() {
             image: getPrimaryImage(),
             images: imagesToSave,
             ledType: ledLabel,
-            height: (formData.heightOptions ?? []).sort((a, b) => a - b).map((h) => `${h / 10}cm`).join(" / ") || "4cm / 6cm / 8cm / 26cm / 30cm / 50cm",
-            heightOptions: formData.heightOptions ?? [40, 60, 80, 260, 300, 500],
+            height: (formData.heightOptions ?? []).sort((a, b) => a - b).map((h) => `${h / 10}cm`).join(" / ") || "3cm / 4cm / 5cm / 6cm / 7cm / 8cm / 9cm / 10cm / 26cm",
+            heightOptions: formData.heightOptions ?? DEFAULT_HEIGHT_OPTS,
             price: formData.price,
+            priceByHeight: (() => {
+              const p = formData.priceByHeight ?? {}
+              const filtered = Object.fromEntries(Object.entries(p).filter(([, v]) => typeof v === "number" && v > 0))
+              return Object.keys(filtered).length > 0 ? filtered : undefined
+            })(),
             description: formData.description,
             category: formData.category,
+            colors: formData.colors ?? [],
             seoTitle: formData.seoTitle,
             seoDescription: formData.seoDescription,
             metaKeywords: formData.metaKeywords || [],
@@ -245,17 +332,20 @@ function AdminProductsPageContent() {
       image: "",
       imageSlots: ["", "", "", "", ""],
       hasLed: true,
-      height: "4cm / 6cm / 8cm / 26cm / 30cm / 50cm",
-      heightOptions: [40, 60, 80, 260, 300, 500],
+      height: "3cm / 4cm / 5cm / 6cm / 8cm / 26cm",
+      heightOptions: [...DEFAULT_HEIGHT_OPTS],
       price: 0,
+      priceByHeight: {},
       description: "",
       category: "residential",
+      colors: [],
       seoTitle: "",
       seoDescription: "",
       metaKeywords: [],
       inStock: true,
       is_active: true,
     })
+    setNewColor("")
     setNewImagePath("")
     setNewKeyword("")
     setShowImageBrowser(false)
@@ -267,15 +357,18 @@ function AdminProductsPageContent() {
     const raw = product.images && Array.isArray(product.images) ? product.images : product.image ? [product.image] : []
     const imageSlots: string[] = [raw[0] ?? "", raw[1] ?? "", raw[2] ?? "", raw[3] ?? "", raw[4] ?? ""]
     const heightOpts = Array.isArray(product.heightOptions) && product.heightOptions.length > 0
-      ? product.heightOptions.filter((n) => [40, 60, 80, 260, 300, 500].includes(n))
-      : [40, 60, 80, 260, 300, 500]
+      ? product.heightOptions.filter((n) => DEFAULT_HEIGHT_OPTS.includes(n))
+      : [...DEFAULT_HEIGHT_OPTS]
     setFormData({
       ...product,
       imageSlots,
       image: product.image || raw[0] || "",
       hasLed: product.ledType?.toLowerCase() !== "without led",
       heightOptions: heightOpts,
+      priceByHeight: product.priceByHeight && Object.keys(product.priceByHeight).length > 0 ? product.priceByHeight : {},
+      colors: Array.isArray(product.colors) ? product.colors : [],
     })
+    setNewColor("")
     setEditingId(product.id)
     setIsAdding(true)
     setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0)
@@ -675,7 +768,7 @@ function AdminProductsPageContent() {
                             type="checkbox"
                             checked={checked}
                             onChange={(e) => {
-                              const current = formData.heightOptions ?? [40, 60, 80, 260, 300, 500]
+                              const current = formData.heightOptions ?? DEFAULT_HEIGHT_OPTS
                               const next = e.target.checked
                                 ? [...current.filter((n) => n !== opt.value), opt.value].sort((a, b) => a - b)
                                 : current.filter((n) => n !== opt.value)
@@ -694,17 +787,108 @@ function AdminProductsPageContent() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-skirting-silver text-sm mb-2">Price (NZD) *</label>
+                  <label className="block text-skirting-silver text-sm mb-2">Default price (NZD/m)</label>
                   <input
                     type="number"
-                    required
                     min="0"
                     step="0.01"
-                    value={formData.price || ""}
+                    value={formData.price ?? ""}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value ? Number(e.target.value) : 0 })}
                     className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none transition-all duration-200"
-                    placeholder="89"
+                    placeholder="e.g. 89 (used when no size-specific price)"
                   />
+                </div>
+                <div>
+                  <label className="block text-skirting-silver text-sm mb-2">Price per size (NZD/m)</label>
+                  <p className="text-skirting-silver/70 text-xs mb-2">Optional. Override price for each height.</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {(formData.heightOptions ?? DEFAULT_HEIGHT_OPTS).map((h) => {
+                      const key = String(h)
+                      const val = (formData.priceByHeight ?? {})[key]
+                      return (
+                        <label key={h} className="flex items-center gap-2 text-sm">
+                          <span className="text-skirting-silver w-10 shrink-0">{h / 10}cm</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={val ?? ""}
+                            onChange={(e) => {
+                              const v = e.target.value ? Number(e.target.value) : undefined
+                              setFormData({
+                                ...formData,
+                                priceByHeight: {
+                                  ...(formData.priceByHeight ?? {}),
+                                  [key]: v as number,
+                                },
+                              })
+                            }}
+                            className="flex-1 min-w-0 bg-skirting-dark border border-white/10 rounded-lg px-3 py-2 text-white focus:border-skirting-amber focus:outline-none text-sm"
+                            placeholder="—"
+                          />
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-skirting-silver text-sm mb-2">Colour sections (for this product)</label>
+                  <p className="text-skirting-silver/70 text-xs mb-2">Add colour options customers can see (e.g. Black, White, Grey).</p>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {(formData.colors ?? []).map((c, i) => (
+                      <span
+                        key={`${c}-${i}`}
+                        className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-skirting-charcoal border border-white/10 text-sm text-white"
+                      >
+                        {c}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setFormData({
+                              ...formData,
+                              colors: (formData.colors ?? []).filter((_, j) => j !== i),
+                            })
+                          }
+                          className="text-skirting-silver hover:text-white ml-1"
+                          aria-label="Remove color"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newColor}
+                      onChange={(e) => setNewColor(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          const t = newColor.trim()
+                          if (t && !(formData.colors ?? []).includes(t)) {
+                            setFormData({ ...formData, colors: [...(formData.colors ?? []), t] })
+                            setNewColor("")
+                          }
+                        }
+                      }}
+                      placeholder="Add color (e.g. Black, White)"
+                      className="flex-1 bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const t = newColor.trim()
+                        if (t && !(formData.colors ?? []).includes(t)) {
+                          setFormData({ ...formData, colors: [...(formData.colors ?? []), t] })
+                          setNewColor("")
+                        }
+                      }}
+                      className="px-4 py-2 bg-skirting-amber text-skirting-dark font-medium rounded-lg hover:bg-white transition-colors shrink-0"
+                    >
+                      Add
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-skirting-silver text-sm mb-2">Category *</label>
@@ -859,24 +1043,95 @@ function AdminProductsPageContent() {
           </div>
         ) : (
           <>
-            <div className="mb-6">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
               <input
                 type="text"
                 value={productSearch}
                 onChange={(e) => setProductSearch(e.target.value)}
                 placeholder="Search product name..."
-                className="w-full sm:w-80 bg-skirting-charcoal border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-skirting-silver/50 focus:border-skirting-amber focus:outline-none"
+                className="w-full sm:w-64 bg-skirting-charcoal border border-white/10 rounded-lg px-4 py-2.5 text-white placeholder-skirting-silver/50 focus:border-skirting-amber focus:outline-none"
               />
+              <select
+                value={filterLed}
+                onChange={(e) => setFilterLed(e.target.value as "All" | "With LED" | "Without LED")}
+                className="bg-skirting-charcoal border border-white/10 rounded-lg px-3 py-2.5 text-white focus:border-skirting-amber focus:outline-none text-sm"
+              >
+                <option value="All">All LED</option>
+                <option value="With LED">With LED</option>
+                <option value="Without LED">Without LED</option>
+              </select>
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value as "All" | "residential" | "smart" | "commercial")}
+                className="bg-skirting-charcoal border border-white/10 rounded-lg px-3 py-2.5 text-white focus:border-skirting-amber focus:outline-none text-sm"
+              >
+                <option value="All">All categories</option>
+                <option value="residential">Residential</option>
+                <option value="smart">Smart</option>
+                <option value="commercial">Commercial</option>
+              </select>
+              <button
+                type="button"
+                onClick={selectAllFiltered}
+                className="px-3 py-2 text-skirting-silver hover:text-white border border-white/10 rounded-lg text-sm"
+              >
+                Select all {filteredProducts.length > 0 ? `(${filteredProducts.length})` : ""}
+              </button>
+              {selectedIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="px-3 py-2 text-skirting-silver hover:text-white border border-white/10 rounded-lg text-sm"
+                >
+                  Clear selection
+                </button>
+              )}
             </div>
+            {selectedIds.size > 0 && (
+              <div className="mb-4 p-4 bg-skirting-charcoal border border-skirting-amber/30 rounded-xl flex flex-wrap items-center gap-3">
+                <span className="text-white font-medium">{selectedIds.size} selected</span>
+                <label className="flex items-center gap-2 text-skirting-silver text-sm">
+                  Set price (NZD/m):
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={bulkPrice}
+                    onChange={(e) => setBulkPrice(e.target.value)}
+                    placeholder="e.g. 20"
+                    className="w-24 bg-skirting-dark border border-white/10 rounded-lg px-3 py-2 text-white focus:border-skirting-amber focus:outline-none text-sm"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={handleBulkPriceApply}
+                  disabled={bulkPriceSubmitting}
+                  className="px-4 py-2 bg-skirting-amber text-skirting-dark font-medium rounded-lg hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  {bulkPriceSubmitting ? "Updating..." : "Apply to selected"}
+                </button>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products
-              .filter((p) => !productSearch.trim() || p.name.toLowerCase().includes(productSearch.trim().toLowerCase()))
-              .map((product) => (
+            {filteredProducts.map((product) => (
             <div
               key={product.id}
-              className="bg-skirting-charcoal border border-white/10 rounded-xl overflow-hidden"
+              className={`bg-skirting-charcoal border rounded-xl overflow-hidden transition-colors ${
+                selectedIds.has(product.id) ? "border-skirting-amber ring-2 ring-skirting-amber/50" : "border-white/10"
+              }`}
             >
               <div className="aspect-4/3 relative bg-skirting-dark">
+                <div className="absolute top-2 left-2 z-10">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(product.id)}
+                      onChange={() => toggleSelect(product.id)}
+                      className="w-4 h-4 rounded border-white/30 bg-skirting-dark text-skirting-amber focus:ring-skirting-amber"
+                    />
+                    <span className="text-white text-xs font-medium">Select</span>
+                  </label>
+                </div>
                 <Image
                   src={(product.image && (product.image.startsWith("/") || product.image.startsWith("http")) ? product.image : "/placeholder.svg")}
                   alt={product.name}
@@ -950,9 +1205,11 @@ function AdminProductsPageContent() {
               Add Product
             </button>
           </div>
-        ) : !loading && productSearch.trim() && products.filter((p) => p.name.toLowerCase().includes(productSearch.trim().toLowerCase())).length === 0 ? (
+        ) : !loading && filteredProducts.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-skirting-silver/70">No products match &quot;{productSearch}&quot;</p>
+            <p className="text-skirting-silver/70">
+              {productSearch.trim() ? `No products match "${productSearch.trim()}"` : "No products match your filters."}
+            </p>
           </div>
         ) : null}
       </div>

@@ -167,30 +167,30 @@ const jsonLd = {
       ],
       hasOfferCatalog: {
         "@type": "OfferCatalog",
-        name: "Skirting Boards",
+        name: "Skirting Boards NZ",
         itemListElement: [
           {
             "@type": "Offer",
             itemOffered: {
               "@type": "Product",
               name: "LED Skirting Boards",
-              description: "Premium aluminium skirting boards with integrated LED lighting",
+              description: "Premium aluminium skirting boards with integrated LED lighting. Best skirting prices in NZ.",
             },
           },
           {
             "@type": "Offer",
             itemOffered: {
               "@type": "Product",
-              name: "Aluminium Skirting",
-              description: "High-quality aluminium skirting boards",
+              name: "Aluminium Skirting Boards",
+              description: "High-quality aluminium skirting boards for homes and commercial. NZ skirting specialist.",
             },
           },
           {
             "@type": "Offer",
             itemOffered: {
               "@type": "Product",
-              name: "Smart Skirting",
-              description: "WiFi-enabled smart skirting with app control",
+              name: "Smart Skirting Boards",
+              description: "WiFi-enabled smart skirting boards with app and voice control. Innovation Skirting NZ.",
             },
           },
         ],

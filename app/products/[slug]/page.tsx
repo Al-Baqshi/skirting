@@ -10,23 +10,25 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  if (!slug) return { title: "Product" }
+  if (!slug) return { title: "Skirting Boards | Innovation Skirting NZ" }
 
   const product = await getSupabaseProductBySlug(slug, true).catch(() => null)
   const catalogEntry = getProductCatalogEntry(slug)
 
-  if (!product) return { title: "Product" }
+  if (!product) return { title: "Skirting Boards | Innovation Skirting NZ" }
 
-  const title = catalogEntry?.displayName ?? product.name
+  const name = catalogEntry?.displayName ?? product.name
+  const title = name.toLowerCase().includes("skirting") ? name : `${name} Skirting Board`
   const description =
     catalogEntry?.metaDescription ?? product.seoDescription ?? product.description ?? undefined
+  const metaDesc = description ?? `${title} - premium skirting boards in New Zealand. Best prices, LED and aluminium options. Innovation Skirting NZ.`
 
   return {
-    title: `${title} | Innovation Skirting`,
-    description: description ?? undefined,
+    title: `${title} | Innovation Skirting NZ`,
+    description: metaDesc,
     openGraph: {
-      title: `${title} | Innovation Skirting`,
-      description: description ?? undefined,
+      title: `${title} | Innovation Skirting NZ`,
+      description: metaDesc,
       type: "website",
     },
   }

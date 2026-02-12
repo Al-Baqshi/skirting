@@ -7,9 +7,13 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { CheckoutModal } from "@/components/checkout-modal"
 import type { StorefrontProduct } from "@/lib/supabase-products"
+import { getDisplayColors } from "@/lib/product-catalog"
 
 const ledPresence = ["All", "With LED", "Without LED"]
-const heights = ["All", "4cm", "6cm", "8cm", "26cm", "30cm", "50cm"]
+const heights = ["All", "3cm", "4cm", "5cm", "6cm", "7cm", "8cm", "9cm", "10cm", "26cm"]
+const MIN_ORDER_METERS = 1
+const DEFAULT_LENGTH_M = 50
+const SHOW_PRICE = false
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<StorefrontProduct[]>([])
@@ -20,9 +24,11 @@ export default function ProductsPage() {
     search: "",
   })
 
-  const [cart, setCart] = useState<{ id: string; quantity: number; length: number }[]>([])
+  const [cart, setCart] = useState<{ id: string; quantity: number; length: number; height?: number; color?: string }[]>([])
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [lengths, setLengths] = useState<Record<string, number>>({})
+  const [selectedColors, setSelectedColors] = useState<Record<string, string>>({})
+  const [selectedHeights, setSelectedHeights] = useState<Record<string, number>>({})
   const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({})
   const [sortBy, setSortBy] = useState<"price-asc" | "price-desc" | "name">("name")
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false)
@@ -65,8 +71,8 @@ export default function ProductsPage() {
             ? product.heightOptions
             : product.heightValue
               ? [product.heightValue]
-              : [40, 60, 80, 260, 300, 500]
-        const filterVal = filters.height === "4cm" ? 40 : filters.height === "6cm" ? 60 : filters.height === "8cm" ? 80 : filters.height === "26cm" ? 260 : filters.height === "30cm" ? 300 : filters.height === "50cm" ? 500 : null
+              : [30, 40, 50, 60, 70, 80, 90, 100, 260]
+        const filterVal = filters.height === "3cm" ? 30 : filters.height === "4cm" ? 40 : filters.height === "5cm" ? 50 : filters.height === "6cm" ? 60 : filters.height === "7cm" ? 70 : filters.height === "8cm" ? 80 : filters.height === "9cm" ? 90 : filters.height === "10cm" ? 100 : filters.height === "26cm" ? 260 : null
         if (filterVal !== null && !opts.includes(filterVal)) return false
       }
       if (filters.search && !product.name.toLowerCase().includes(filters.search.toLowerCase())) return false
@@ -81,17 +87,20 @@ export default function ProductsPage() {
     return result
   }, [filters, sortBy, products])
 
-  const addToCart = (productId: string, height = 80) => {
-    const qty = quantities[productId] || 1
-    const len = lengths[productId] || 1
+  const addToCart = (productId: string, height?: number, color?: string) => {
+    const qty = quantities[productId] ?? 1
+    const len = lengths[productId] ?? DEFAULT_LENGTH_M
+    const product = products.find((p) => p.id === productId)
+    const h = height ?? selectedHeights[productId] ?? product?.heightOptions?.[0] ?? 50
+    const colorToUse = color ?? selectedColors[productId]
     setCart((prev) => {
       const existing = prev.find((item) => item.id === productId)
       if (existing) {
         return prev.map((item) =>
-          item.id === productId ? { ...item, quantity: item.quantity + qty, length: len, height } : item,
+          item.id === productId ? { ...item, quantity: item.quantity + qty, length: len, height: h, color: colorToUse } : item,
         )
       }
-      return [...prev, { id: productId, quantity: qty, length: len, height }]
+      return [...prev, { id: productId, quantity: qty, length: len, height: h, color: colorToUse }]
     })
   }
 
@@ -380,10 +389,12 @@ export default function ProductsPage() {
                       <Link href={`/products/${product.slug}`} className="block mb-2">
                         <div className="flex items-start justify-between mb-2">
                           <h3 className="text-lg font-semibold text-white hover:text-skirting-amber transition-colors cursor-pointer">{product.name}</h3>
-                        <span className="text-xl font-semibold text-skirting-amber shrink-0">
-                          ${product.price}
-                          <span className="text-xs font-light text-skirting-silver">/m</span>
-                        </span>
+                          {SHOW_PRICE && (
+                            <span className="text-xl font-semibold text-skirting-amber shrink-0">
+                              ${product.price}
+                              <span className="text-xs font-light text-skirting-silver">/m</span>
+                            </span>
+                          )}
                         </div>
                         <p className="text-skirting-silver/60 text-sm mb-3">{product.description}</p>
                       </Link>
@@ -392,63 +403,71 @@ export default function ProductsPage() {
                         <span className="bg-white/5 px-2 py-0.5 rounded">{product.height}</span>
                       </div>
 
-                      {/* Controls */}
+                      {(() => {
+                        const opts = product.heightOptions && product.heightOptions.length > 0 ? product.heightOptions : [30, 40, 50, 60, 70, 80, 90, 100, 260]
+                        const hasMultipleHeights = opts.length > 1
+                        return hasMultipleHeights ? (
+                          <div className="mb-3">
+                            <label className="text-skirting-silver/60 text-xs mb-1.5 block">Height</label>
+                            <div className="flex flex-wrap gap-1.5">
+                              {opts.map((h) => (
+                                <button
+                                  key={h}
+                                  type="button"
+                                  onClick={() => setSelectedHeights((prev) => ({ ...prev, [product.id]: h }))}
+                                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                                    (selectedHeights[product.id] ?? opts[0]) === h
+                                      ? "bg-skirting-amber text-skirting-dark"
+                                      : "bg-white/5 text-skirting-silver hover:bg-white/10"
+                                  }`}
+                                >
+                                  {h / 10}cm
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null
+                      })()}
+
                       <div className="flex gap-2 mb-4">
                         <div className="flex-1">
                           <label className="text-skirting-silver/60 text-xs mb-1 block">Length (m)</label>
                           <input
                             type="number"
-                            min="1"
-                            max="100"
-                            value={lengths[product.id] || 1}
-                            onChange={(e) => setLengths((prev) => ({ ...prev, [product.id]: Number(e.target.value) }))}
+                            min={MIN_ORDER_METERS}
+                            max={10000}
+                            value={lengths[product.id] ?? DEFAULT_LENGTH_M}
+                            onChange={(e) => setLengths((prev) => ({ ...prev, [product.id]: Math.max(MIN_ORDER_METERS, Number(e.target.value) || MIN_ORDER_METERS) }))}
                             className="w-full bg-skirting-dark border border-white/10 rounded-lg px-3 py-2 text-white text-center text-sm focus:border-skirting-amber focus:outline-none"
                           />
                         </div>
                         <div className="flex-1">
-                          <label className="text-skirting-silver/60 text-xs mb-1 block">Qty</label>
-                          <div className="flex items-center border border-white/10 rounded-lg overflow-hidden bg-skirting-dark">
-                            <button
-                              onClick={() =>
-                                setQuantities((prev) => ({
-                                  ...prev,
-                                  [product.id]: Math.max(1, (prev[product.id] || 1) - 1),
-                                }))
-                              }
-                              className="px-3 py-2 text-skirting-silver hover:bg-white/5 transition-colors text-sm"
+                          <label className="text-skirting-silver/60 text-xs mb-1 block">Colour</label>
+                          {getDisplayColors(product).length > 0 ? (
+                            <select
+                              value={selectedColors[product.id] ?? getDisplayColors(product)[0] ?? ""}
+                              onChange={(e) => setSelectedColors((prev) => ({ ...prev, [product.id]: e.target.value }))}
+                              className="w-full h-[38px] bg-skirting-dark border border-white/10 rounded-lg pl-3 pr-8 py-2 text-white text-xs focus:border-skirting-amber focus:outline-none appearance-none cursor-pointer"
+                              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center" }}
                             >
-                              -
-                            </button>
-                            <span className="flex-1 text-center text-white font-medium text-sm">
-                              {quantities[product.id] || 1}
-                            </span>
-                            <button
-                              onClick={() =>
-                                setQuantities((prev) => ({ ...prev, [product.id]: (prev[product.id] || 1) + 1 }))
-                              }
-                              className="px-3 py-2 text-skirting-silver hover:bg-white/5 transition-colors text-sm"
-                            >
-                              +
-                            </button>
-                          </div>
+                              {getDisplayColors(product).map((c) => (
+                                <option key={c} value={c} className="bg-skirting-dark text-white">
+                                  {c}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <div className="flex items-center justify-center h-[38px] rounded-lg border border-white/10 bg-skirting-dark text-skirting-silver/50 text-xs">
+                              —
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between pt-4 border-t border-white/10">
-                        <div>
-                          <span className="text-skirting-silver/60 text-xs block">Subtotal</span>
-                          <span className="text-lg font-semibold text-white">
-                            $
-                            {(
-                              product.price *
-                              (lengths[product.id] || 1) *
-                              (quantities[product.id] || 1)
-                            ).toLocaleString()}
-                          </span>
-                        </div>
+                      <div className="pt-2 border-t border-white/10">
                         <button
                           onClick={() => addToCart(product.id)}
-                          className="bg-skirting-amber text-skirting-dark px-4 py-2 text-sm uppercase tracking-wider font-medium hover:bg-white transition-colors rounded-lg"
+                          className="w-full bg-skirting-amber text-skirting-dark px-4 py-2.5 text-sm uppercase tracking-wider font-medium hover:bg-white transition-colors rounded-lg"
                         >
                           Add to Cart
                         </button>
@@ -478,7 +497,7 @@ export default function ProductsPage() {
             </svg>
             <div className="text-left">
               <p className="text-xs opacity-70">{cart.reduce((sum, item) => sum + item.quantity, 0)} items</p>
-              <p className="font-bold text-lg">${cartTotal.toLocaleString()}</p>
+              {SHOW_PRICE && <p className="font-bold text-lg">${cartTotal.toLocaleString()}</p>}
             </div>
             <span className="bg-skirting-dark text-white px-4 py-2 rounded-lg text-sm font-medium">Checkout</span>
           </button>

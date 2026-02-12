@@ -7,13 +7,16 @@ export type StorefrontProduct = {
   ledType: string
   height: string
   heightValue: number
-  heightOptions?: number[] // Multi-select: 40, 60, 80, 260, 300, 500 (4cm, 6cm, 8cm, 26cm, 30cm, 50cm). Default all six.
+  heightOptions?: number[] // Multi-select: 30,40,50,60,70,80,90,100,260 (3–10cm, 26cm). Default all.
   profile: string
   power: string
   features: string[]
   price: number
+  /** Price per height (key = height value as string e.g. "30" for 3cm). Use getPriceForHeight(product, height) for storefront. */
+  priceByHeight?: Record<string, number>
   description: string
   category: "residential" | "smart" | "commercial"
+  colors?: string[]
   seoTitle?: string
   seoDescription?: string
   metaKeywords?: string[]
@@ -34,8 +37,10 @@ type DbProduct = {
   power: string | null
   features: string[] | null
   price: number | null
+  price_by_height: Record<string, number> | null
   description: string | null
   category: string | null
+  colors: string[] | null
   seo_title: string | null
   seo_description: string | null
   meta_keywords: string[] | null
@@ -91,13 +96,21 @@ function mapDbProduct(row: DbProduct): StorefrontProduct {
     heightOptions:
       Array.isArray(row.height_options) && row.height_options.length > 0
         ? row.height_options
-        : [40, 60, 80, 260, 300, 500],
+        : [30, 40, 50, 60, 70, 80, 90, 100, 260],
     profile: row.profile ?? "",
     power: row.power ?? "",
     features: row.features ?? [],
     price: row.price ?? 0,
+    priceByHeight:
+      row.price_by_height && typeof row.price_by_height === "object" && Object.keys(row.price_by_height).length > 0
+        ? row.price_by_height
+        : undefined,
     description: row.description ?? "",
     category: normalizedCategory,
+    colors:
+      Array.isArray(row.colors) && row.colors.length > 0
+        ? row.colors.filter((c): c is string => typeof c === "string" && c.trim() !== "")
+        : undefined,
     seoTitle: row.seo_title ?? undefined,
     seoDescription: row.seo_description ?? undefined,
     metaKeywords: row.meta_keywords ?? undefined,
@@ -141,36 +154,49 @@ async function supabaseRest<T>(pathAndQuery: string): Promise<T> {
 }
 
 const SELECT_COLUMNS =
+  "id,name,slug,image,images,led_type,height,height_value,height_options,profile,power,features,price,price_by_height,description,category,colors,seo_title,seo_description,meta_keywords,in_stock,is_active"
+
+/** Select list without price_by_height and colors for DBs that haven't run migration 007 */
+const SELECT_COLUMNS_LEGACY =
   "id,name,slug,image,images,led_type,height,height_value,height_options,profile,power,features,price,description,category,seo_title,seo_description,meta_keywords,in_stock,is_active"
 
 export async function getSupabaseProducts(limit = 50, includeInactive = false): Promise<StorefrontProduct[]> {
-  let query = `products?select=${encodeURIComponent(SELECT_COLUMNS)}&order=name.asc&limit=${limit}`
-  
-  // If not including inactive, filter by is_active
-  if (!includeInactive) {
-    query += `&is_active=eq.true`
+  const orderAndFilter = `&order=name.asc&limit=${limit}${includeInactive ? "" : "&is_active=eq.true"}`
+  try {
+    const query = `products?select=${encodeURIComponent(SELECT_COLUMNS)}${orderAndFilter}`
+    const rows = await supabaseRest<DbProduct[]>(query)
+    return rows.map(mapDbProduct)
+  } catch {
+    const queryLegacy = `products?select=${encodeURIComponent(SELECT_COLUMNS_LEGACY)}${orderAndFilter}`
+    const rows = await supabaseRest<DbProduct[]>(queryLegacy)
+    return rows.map(mapDbProduct)
   }
-  
-  const rows = await supabaseRest<DbProduct[]>(query)
+}
 
-  return rows.map(mapDbProduct)
+/** Get price per meter for a given height. Uses priceByHeight if set, else product.price. */
+export function getPriceForHeight(product: StorefrontProduct, heightValue: number): number {
+  const key = String(heightValue)
+  const byHeight = product.priceByHeight && product.priceByHeight[key]
+  if (typeof byHeight === "number" && byHeight >= 0) return byHeight
+  return product.price ?? 0
 }
 
 export async function getSupabaseProductBySlug(slug: string, includeInactive = false): Promise<StorefrontProduct | null> {
+  const slugFilter = `&slug=eq.${encodeURIComponent(slug)}&limit=1${includeInactive ? "" : "&is_active=eq.true"}`
   try {
-    let query = `products?select=${encodeURIComponent(SELECT_COLUMNS)}&slug=eq.${encodeURIComponent(slug)}&limit=1`
-    
-    // If not including inactive, filter by is_active
-    if (!includeInactive) {
-      query += `&is_active=eq.true`
-    }
-    
+    const query = `products?select=${encodeURIComponent(SELECT_COLUMNS)}${slugFilter}`
     const rows = await supabaseRest<DbProduct[]>(query)
-
     const first = rows[0]
     return first ? mapDbProduct(first) : null
-  } catch (error) {
-    console.error("Error fetching product by slug:", slug, error)
-    return null
+  } catch {
+    try {
+      const queryLegacy = `products?select=${encodeURIComponent(SELECT_COLUMNS_LEGACY)}${slugFilter}`
+      const rows = await supabaseRest<DbProduct[]>(queryLegacy)
+      const first = rows[0]
+      return first ? mapDbProduct(first) : null
+    } catch (error) {
+      console.error("Error fetching product by slug:", slug, error)
+      return null
+    }
   }
 }

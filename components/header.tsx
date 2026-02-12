@@ -24,7 +24,7 @@ export function Header() {
           <Link href="/" className="hover:opacity-70 transition-opacity shrink-0">
             <Image
               src="/images/logo.png"
-              alt="Innovation Skirting Logo"
+              alt="Innovation Skirting - Skirting Boards NZ"
               width={240}
               height={67}
               priority

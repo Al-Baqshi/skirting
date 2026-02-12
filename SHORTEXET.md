@@ -1,47 +1,46 @@
-# Shortexet – Where You Are & What’s Next
+# Shortexet – Where You Are & What's Next
 
-**Last updated:** 2026-02-10
+**Last updated:** 2026-02-12
 
-## Latest: Product restructure (first product)
+## Latest: Admin filters, price per size, and colors
 
-- **Defined first product:** RMS-A3 → **Sharp Modern A3**
-  - Display name: Sharp Modern A3  
-  - Internal code: RMS-A3  
-  - Catalogue line: 8/10/12CM buckle light strip  
-  - Meta description: pre-written in `lib/product-catalog.ts`
-- **Product catalog:** `lib/product-catalog.ts` – add new products here (display name, internal code, meta description, section labels).
-- **Client product view:** 4 sections when product is in catalog and has 4 images in order:
-  1. **Overview** – main product visual  
-  2. **Product parameters** – sizes, material, length  
-  3. **Colours** – off/on light effect  
-  4. **Installation & accessories** – front installation + accessories  
-- **Navigation:** Prev/next product links at bottom of each product page; “Back to Products” and “View All Products” for easy movement.
-- **Meta:** Product page uses catalog `metaDescription` for SEO when present; `generateMetadata` in `app/products/[slug]/page.tsx`.
-- **Assets:** Sharp Modern A3 images copied to `public/product/`:
-  - `sharp-Modern-a3-overview.png`
-  - `sharp-Modern-a3-parameters.png`
-  - `sharp-Modern-a3-colours.png`
-  - `sharp-Modern-a3-installation-accessories.png`
-- **Seed:** `scripts/seed-sharp-Modern-a3.sql` – run in Supabase to create/update Sharp Modern A3 (ensure `images` column exists via `ADD_IMAGES_COLUMN.sql` first).
+- **Admin product list filters**
+  - **LED:** All / With LED / Without LED (dropdown next to search).
+  - **Category:** All / Residential / Smart / Commercial.
+  - List is filtered by search + LED + category; empty state message reflects filters.
+
+- **Price per size (height)**
+  - DB: `price_by_height` JSONB (keys = height value as string e.g. `"30"`, `"40"`; value = price per meter).
+  - Admin form: “Default price (NZD/m)” plus “Price per size (NZD/m)” – one input per height (3cm–26cm). Validation: either default price > 0 or at least one size-specific price.
+  - Storefront: `getPriceForHeight(product, heightValue)` in `lib/supabase-products.ts` – product detail and cart/checkout use it for line price and totals.
+
+- **Colors per product**
+  - DB: `colors` TEXT[] (default `'{}'`).
+  - Admin form: “Colors” – add/remove tags (e.g. Black, White, Grey). Saved on create/update.
+  - Storefront: product detail shows “Colours” in parameters/specs when `product.colors` is non-empty.
+
+- **API**
+  - `GET/POST /api/admin/products`: list and create support `priceByHeight`, `colors`.
+  - `PATCH /api/admin/products/[id]`: accepts `priceByHeight` and `colors` in body.
 
 ## Where you left off
 
-- First product (Sharp Modern A3) is **defined and wired** in code and assets.  
-- You can create it in the DB by running `scripts/seed-sharp-Modern-a3.sql` in Supabase, or add it manually in Admin → Products with the same name, slug `sharp-Modern-a3`, and the 4 images in the order above.
+- Migration `007_add_price_by_height_and_colors.sql` adds `price_by_height` and `colors`.
+- Admin products page: filters (LED, category), price-by-height inputs, color tags; create/update send `priceByHeight` and `colors`.
+- Storefront product page and checkout modal use `getPriceForHeight()` and display `product.colors` where relevant.
 
 ## Next actions
 
-1. **Run seed (if using Supabase):** Execute `ADD_IMAGES_COLUMN.sql` if needed, then `scripts/seed-sharp-Modern-a3.sql`.  
-2. **Or add via Admin:** Go to `/admin/products` → Add Product → Name “Sharp Modern A3”, slug `sharp-Modern-a3`, add the 4 image URLs/paths in order (Overview, Parameters, Colours, Installation & accessories).  
-3. **Add more products:** For each new product (e.g. RMS-A7, RMS-A8…):  
-   - Add an entry in `lib/product-catalog.ts` (display name, internal code, meta description).  
-   - Create the product in DB (admin or SQL) with 4 images in the same section order.  
-   - Client view and meta will pick it up automatically.
+1. **Run migration:** Apply `supabase/migrations/007_add_price_by_height_and_colors.sql` if not already applied.
+2. **Admin:** Use filters to narrow products; when adding/editing a product, set default price and/or price per size, and add colours as needed.
+3. **Add more products:** Continue using `lib/product-catalog.ts`, admin UI, and product images as before; new fields are optional and backward-compatible.
 
 ## Key files
 
-- `lib/product-catalog.ts` – product display names, codes, meta, section labels  
-- `app/products/[slug]/page.tsx` – server page, fetch product + metadata  
-- `app/products/[slug]/ProductViewClient.tsx` – 4-section or legacy layout, order card, prev/next  
-- `scripts/seed-sharp-Modern-a3.sql` – seed first product  
-- `public/product/sharp-Modern-a3-*.png` – first product images
+- `supabase/migrations/007_add_price_by_height_and_colors.sql` – price_by_height, colors columns
+- `lib/supabase-products.ts` – types, `getPriceForHeight`, mapDbProduct
+- `app/api/admin/products/route.ts` – GET/POST with priceByHeight & colors
+- `app/api/admin/products/[id]/route.ts` – PATCH with priceByHeight & colors
+- `app/admin/products/page.tsx` – filters, price-per-size form, colors form
+- `app/products/[slug]/ProductViewClient.tsx` – price by height, colours in specs
+- `components/checkout-modal.tsx` – line price via getPriceForHeight
