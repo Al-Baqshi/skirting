@@ -142,7 +142,7 @@ export async function PATCH(
       updateData.height_value = heightValue || null
     }
     if (heightOptions !== undefined) {
-      const ALL_HEIGHTS = [30, 40, 50, 60, 70, 80, 90, 100, 260]
+      const ALL_HEIGHTS = [12, 20, 30, 40, 46, 50, 60, 65, 70, 80, 90, 100, 260]
       const opts = Array.isArray(heightOptions) ? heightOptions.filter((n) => ALL_HEIGHTS.includes(n)) : ALL_HEIGHTS
       updateData.height_options = opts.length > 0 ? opts : ALL_HEIGHTS
     }

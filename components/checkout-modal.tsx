@@ -390,7 +390,7 @@ export function CheckoutModal({
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-3 text-base text-white focus:border-skirting-amber focus:outline-none"
-                  placeholder="+64 9 123 4567"
+                  placeholder="+64 27 338 8500"
                 />
               </div>
               <div>

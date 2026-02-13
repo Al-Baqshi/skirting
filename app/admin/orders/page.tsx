@@ -27,6 +27,12 @@ type Order = {
   confirmed_at: string | null
   shipped_at: string | null
   delivered_at: string | null
+  payment_status?: string | null
+  amount_paid?: number | null
+  payment_method?: string | null
+  transaction_reference?: string | null
+  payment_date?: string | null
+  payment_notes?: string | null
 }
 
 type Inquiry = {
@@ -55,7 +61,14 @@ function OrdersPageContent() {
   const [statusForm, setStatusForm] = useState({
     status: "",
     adminNotes: "",
+    payment_status: "",
+    amount_paid: "",
+    payment_method: "",
+    transaction_reference: "",
+    payment_date: "",
+    payment_notes: "",
   })
+  const [testEmailLoading, setTestEmailLoading] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -111,20 +124,38 @@ function OrdersPageContent() {
     setUpdatingStatus(id)
     try {
       const endpoint = type === "order" ? `/api/admin/orders/${id}` : `/api/admin/inquiries/${id}`
+      const body: Record<string, unknown> = {
+        status: statusForm.status,
+        adminNotes: statusForm.adminNotes || null,
+      }
+      if (type === "order") {
+        body.payment_status = statusForm.payment_status || null
+        body.amount_paid = statusForm.amount_paid ? parseFloat(statusForm.amount_paid) : null
+        body.payment_method = statusForm.payment_method || null
+        body.transaction_reference = statusForm.transaction_reference || null
+        body.payment_date = statusForm.payment_date || null
+        body.payment_notes = statusForm.payment_notes || null
+      }
       const res = await fetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: statusForm.status,
-          adminNotes: statusForm.adminNotes || null,
-        }),
+        body: JSON.stringify(body),
       })
 
       const json = await res.json()
       if (res.ok) {
         await loadData()
         setSelectedItem(null)
-        setStatusForm({ status: "", adminNotes: "" })
+        setStatusForm({
+          status: "",
+          adminNotes: "",
+          payment_status: "",
+          amount_paid: "",
+          payment_method: "",
+          transaction_reference: "",
+          payment_date: "",
+          payment_notes: "",
+        })
         toast.success("Status updated successfully!")
       } else {
         toast.error(`Error: ${json.error}`)
@@ -168,17 +199,42 @@ function OrdersPageContent() {
       <Header />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Orders & Inquiries</h1>
             <p className="text-skirting-silver/70">View and manage customer orders and contact form submissions</p>
           </div>
-          <Link
-            href="/admin/products"
-            className="px-6 py-3 border border-white/10 text-skirting-silver font-semibold uppercase tracking-wide hover:border-skirting-amber hover:text-skirting-amber transition-colors"
-          >
-            Manage Products
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                setTestEmailLoading(true)
+                try {
+                  const res = await fetch("/api/admin/test-email", { method: "POST" })
+                  const data = await res.json()
+                  if (data.ok) {
+                    toast.success(data.message || "Test email sent. Check your inbox.")
+                  } else {
+                    toast.error(data.error || "Failed to send test email")
+                  }
+                } catch (e) {
+                  toast.error("Request failed")
+                } finally {
+                  setTestEmailLoading(false)
+                }
+              }}
+              disabled={testEmailLoading}
+              className="px-4 py-2.5 border border-white/10 text-skirting-silver text-sm font-medium uppercase tracking-wide hover:border-skirting-amber hover:text-skirting-amber transition-colors disabled:opacity-50"
+            >
+              {testEmailLoading ? "Sending…" : "Send test email"}
+            </button>
+            <Link
+              href="/admin/products"
+              className="px-6 py-3 border border-white/10 text-skirting-silver font-semibold uppercase tracking-wide hover:border-skirting-amber hover:text-skirting-amber transition-colors"
+            >
+              Manage Products
+            </Link>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -259,6 +315,12 @@ function OrdersPageContent() {
                         setStatusForm({
                           status: order.status,
                           adminNotes: order.admin_notes || "",
+                          payment_status: order.payment_status || "",
+                          amount_paid: order.amount_paid != null ? String(order.amount_paid) : "",
+                          payment_method: order.payment_method || "",
+                          transaction_reference: order.transaction_reference || "",
+                          payment_date: order.payment_date ? String(order.payment_date).slice(0, 10) : "",
+                          payment_notes: order.payment_notes || "",
                         })
                       }}
                       className="px-4 py-2 bg-skirting-amber/20 text-skirting-amber hover:bg-skirting-amber/30 transition-colors text-sm font-medium rounded"
@@ -338,6 +400,12 @@ function OrdersPageContent() {
                         setStatusForm({
                           status: inquiry.status,
                           adminNotes: inquiry.admin_notes || "",
+                          payment_status: "",
+                          amount_paid: "",
+                          payment_method: "",
+                          transaction_reference: "",
+                          payment_date: "",
+                          payment_notes: "",
                         })
                       }}
                       className="px-4 py-2 bg-skirting-amber/20 text-skirting-amber hover:bg-skirting-amber/30 transition-colors text-sm font-medium rounded"
@@ -358,7 +426,16 @@ function OrdersPageContent() {
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setSelectedItem(null)
-                setStatusForm({ status: "", adminNotes: "" })
+                setStatusForm({
+                  status: "",
+                  adminNotes: "",
+                  payment_status: "",
+                  amount_paid: "",
+                  payment_method: "",
+                  transaction_reference: "",
+                  payment_date: "",
+                  payment_notes: "",
+                })
               }
             }}
             onWheel={(e) => {
@@ -379,7 +456,16 @@ function OrdersPageContent() {
                 <button
                   onClick={() => {
                     setSelectedItem(null)
-                    setStatusForm({ status: "", adminNotes: "" })
+                    setStatusForm({
+                      status: "",
+                      adminNotes: "",
+                      payment_status: "",
+                      amount_paid: "",
+                      payment_method: "",
+                      transaction_reference: "",
+                      payment_date: "",
+                      payment_notes: "",
+                    })
                   }}
                   className="text-skirting-silver hover:text-white transition-colors p-1.5 sm:p-2 hover:bg-white/10 rounded-lg touch-target"
                   aria-label="Close"
@@ -451,13 +537,91 @@ function OrdersPageContent() {
                     </div>
                   )}
 
+                  {/* Payment (orders only) */}
+                  {activeTab === "orders" && selectedItem && "order_number" in selectedItem && (
+                    <div className="space-y-4 mb-6">
+                      <h3 className="text-lg font-semibold text-white">Payment</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-skirting-silver text-sm mb-2">Payment status</label>
+                          <select
+                            value={statusForm.payment_status ?? ""}
+                            onChange={(e) => setStatusForm({ ...statusForm, payment_status: e.target.value })}
+                            className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                          >
+                            <option value="">—</option>
+                            <option value="unpaid">Unpaid</option>
+                            <option value="partial">Partially paid</option>
+                            <option value="paid">Paid in full</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-skirting-silver text-sm mb-2">Amount paid ($)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={statusForm.amount_paid ?? ""}
+                            onChange={(e) => setStatusForm({ ...statusForm, amount_paid: e.target.value })}
+                            placeholder="0.00"
+                            className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-skirting-silver text-sm mb-2">Payment method</label>
+                          <select
+                            value={statusForm.payment_method ?? ""}
+                            onChange={(e) => setStatusForm({ ...statusForm, payment_method: e.target.value })}
+                            className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                          >
+                            <option value="">—</option>
+                            <option value="Bank transfer">Bank transfer</option>
+                            <option value="Card">Card</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-skirting-silver text-sm mb-2">Payment date</label>
+                          <input
+                            type="date"
+                            value={statusForm.payment_date ?? ""}
+                            onChange={(e) => setStatusForm({ ...statusForm, payment_date: e.target.value })}
+                            className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-skirting-silver text-sm mb-2">Transaction / reference number (optional)</label>
+                          <input
+                            type="text"
+                            value={statusForm.transaction_reference ?? ""}
+                            onChange={(e) => setStatusForm({ ...statusForm, transaction_reference: e.target.value })}
+                            placeholder="Bank or transaction reference"
+                            className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                          />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-skirting-silver text-sm mb-2">Payment notes (optional)</label>
+                          <input
+                            type="text"
+                            value={statusForm.payment_notes ?? ""}
+                            onChange={(e) => setStatusForm({ ...statusForm, payment_notes: e.target.value })}
+                            placeholder="Optional note"
+                            className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-skirting-silver/70 text-xs">Saving status or payment will email the customer an update (order status + payment/invoice).</p>
+                    </div>
+                  )}
+
                   {/* Status Update Form */}
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-white">Update Status</h3>
                     <div>
                       <label className="block text-skirting-silver text-sm mb-2">Status *</label>
                       <select
-                        value={statusForm.status}
+                        value={statusForm.status ?? ""}
                         onChange={(e) => setStatusForm({ ...statusForm, status: e.target.value })}
                         className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none"
                       >
@@ -484,7 +648,7 @@ function OrdersPageContent() {
                     <div>
                       <label className="block text-skirting-silver text-sm mb-2">Admin Notes</label>
                       <textarea
-                        value={statusForm.adminNotes}
+                        value={statusForm.adminNotes ?? ""}
                         onChange={(e) => setStatusForm({ ...statusForm, adminNotes: e.target.value })}
                         rows={4}
                         className="w-full bg-skirting-dark border border-white/10 rounded-lg px-4 py-2 text-white focus:border-skirting-amber focus:outline-none resize-none"
@@ -501,7 +665,16 @@ function OrdersPageContent() {
                   <button
                     onClick={() => {
                       setSelectedItem(null)
-                      setStatusForm({ status: "", adminNotes: "" })
+                      setStatusForm({
+                        status: "",
+                        adminNotes: "",
+                        payment_status: "",
+                        amount_paid: "",
+                        payment_method: "",
+                        transaction_reference: "",
+                        payment_date: "",
+                        payment_notes: "",
+                      })
                     }}
                     className="w-full sm:flex-1 px-4 sm:px-6 py-3 border border-white/10 text-skirting-silver font-semibold uppercase tracking-wide hover:border-skirting-amber hover:text-skirting-amber transition-colors rounded-lg text-sm sm:text-base touch-target"
                   >

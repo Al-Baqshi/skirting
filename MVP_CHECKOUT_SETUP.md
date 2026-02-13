@@ -19,7 +19,7 @@ Add to `.env.local`:
 EMAIL_SERVICE=resend
 RESEND_API_KEY=re_xxxxxxxxxxxxx
 ORDER_NOTIFICATION_EMAIL=your-email@example.com
-EMAIL_FROM=orders@innovationskirting.co.nz
+EMAIL_FROM=orders@skirting.co.nz
 ```
 
 **Done!** Orders will be emailed to you. No webhook needed.
@@ -105,7 +105,7 @@ See "Email Setup" section below.
    EMAIL_SERVICE=resend
    RESEND_API_KEY=re_xxxxxxxxxxxxx
    ORDER_NOTIFICATION_EMAIL=your-email@example.com
-   EMAIL_FROM=orders@innovationskirting.co.nz
+   EMAIL_FROM=orders@skirting.co.nz
    ```
 
 **That's it!** Orders will be emailed directly to you. No webhook needed.

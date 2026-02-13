@@ -96,7 +96,7 @@ function mapDbProduct(row: DbProduct): StorefrontProduct {
     heightOptions:
       Array.isArray(row.height_options) && row.height_options.length > 0
         ? row.height_options
-        : [30, 40, 50, 60, 70, 80, 90, 100, 260],
+        : [12, 20, 30, 40, 46, 50, 60, 65, 70, 80, 90, 100, 260],
     profile: row.profile ?? "",
     power: row.power ?? "",
     features: row.features ?? [],

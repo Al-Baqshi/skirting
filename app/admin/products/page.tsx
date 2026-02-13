@@ -33,10 +33,14 @@ function AdminProductsPageContent() {
   const SLOT_KEYS = IMAGE_SLOTS.map((s) => s.key)
 
   const HEIGHT_OPTIONS = [
+    { value: 12, label: "1.2cm" },
+    { value: 20, label: "2cm" },
     { value: 30, label: "3cm" },
     { value: 40, label: "4cm" },
+    { value: 46, label: "4.6cm" },
     { value: 50, label: "5cm" },
     { value: 60, label: "6cm" },
+    { value: 65, label: "6.5cm" },
     { value: 70, label: "7cm" },
     { value: 80, label: "8cm" },
     { value: 90, label: "9cm" },
@@ -51,7 +55,7 @@ function AdminProductsPageContent() {
     image: "",
     imageSlots: ["", "", "", "", ""],
     hasLed: true,
-    height: "3cm / 4cm / 5cm / 6cm / 7cm / 8cm / 9cm / 10cm / 26cm",
+    height: "1.2cm / 2cm / 3cm / 4cm / 4.6cm / 5cm / 6cm / 6.5cm / 7cm / 8cm / 9cm / 10cm / 26cm",
     heightOptions: [...DEFAULT_HEIGHT_OPTS],
     price: 0,
     priceByHeight: {},
@@ -83,6 +87,7 @@ function AdminProductsPageContent() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkPrice, setBulkPrice] = useState("")
   const [bulkPriceSubmitting, setBulkPriceSubmitting] = useState(false)
+  const [testEmailLoading, setTestEmailLoading] = useState(false)
   const formRef = useRef<HTMLDivElement>(null)
 
   const filteredProducts = products.filter((p) => {
@@ -239,7 +244,7 @@ function AdminProductsPageContent() {
             image: getPrimaryImage(),
             images: imagesToSave,
             ledType: ledLabel,
-            height: (formData.heightOptions ?? []).sort((a, b) => a - b).map((h) => `${h / 10}cm`).join(" / ") || "3cm / 4cm / 5cm / 6cm / 7cm / 8cm / 9cm / 10cm / 26cm",
+            height: (formData.heightOptions ?? []).sort((a, b) => a - b).map((h) => `${h / 10}cm`).join(" / ") || "1.2cm / 2cm / 3cm / 4cm / 4.6cm / 5cm / 6cm / 6.5cm / 7cm / 8cm / 9cm / 10cm / 26cm",
             heightOptions: formData.heightOptions ?? DEFAULT_HEIGHT_OPTS,
             price: formData.price,
             priceByHeight: (() => {
@@ -284,7 +289,7 @@ function AdminProductsPageContent() {
             image: getPrimaryImage(),
             images: imagesToSave,
             ledType: ledLabel,
-            height: (formData.heightOptions ?? []).sort((a, b) => a - b).map((h) => `${h / 10}cm`).join(" / ") || "3cm / 4cm / 5cm / 6cm / 7cm / 8cm / 9cm / 10cm / 26cm",
+            height: (formData.heightOptions ?? []).sort((a, b) => a - b).map((h) => `${h / 10}cm`).join(" / ") || "1.2cm / 2cm / 3cm / 4cm / 4.6cm / 5cm / 6cm / 6.5cm / 7cm / 8cm / 9cm / 10cm / 26cm",
             heightOptions: formData.heightOptions ?? DEFAULT_HEIGHT_OPTS,
             price: formData.price,
             priceByHeight: (() => {
@@ -332,7 +337,7 @@ function AdminProductsPageContent() {
       image: "",
       imageSlots: ["", "", "", "", ""],
       hasLed: true,
-      height: "3cm / 4cm / 5cm / 6cm / 8cm / 26cm",
+      height: "1.2cm / 2cm / 3cm / 4cm / 4.6cm / 5cm / 6cm / 6.5cm / 7cm / 8cm / 9cm / 10cm / 26cm",
       heightOptions: [...DEFAULT_HEIGHT_OPTS],
       price: 0,
       priceByHeight: {},
@@ -467,13 +472,37 @@ function AdminProductsPageContent() {
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">Product Management</h1>
             <p className="text-skirting-silver/70">Add, edit, and manage skirting board products</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Link
               href="/admin/orders"
               className="px-6 py-3 border border-white/10 text-skirting-silver font-semibold uppercase tracking-wide hover:border-skirting-amber hover:text-skirting-amber transition-colors"
             >
               View Orders
             </Link>
+            <button
+              type="button"
+              onClick={async () => {
+                setTestEmailLoading(true)
+                try {
+                  const res = await fetch("/api/admin/test-email", { method: "POST" })
+                  const data = await res.json()
+                  if (data.ok) {
+                    toast.success(data.message || "Test email sent. Check pqshub@gmail.com & hello@skirting.co.nz")
+                  } else {
+                    toast.error(data.error || "Failed to send test email")
+                  }
+                } catch {
+                  toast.error("Request failed")
+                } finally {
+                  setTestEmailLoading(false)
+                }
+              }}
+              disabled={testEmailLoading}
+              title="Order and contact notifications are sent to pqshub@gmail.com and hello@skirting.co.nz"
+              className="px-4 py-3 border border-white/10 text-skirting-silver text-sm font-semibold uppercase tracking-wide hover:border-skirting-amber hover:text-skirting-amber transition-colors disabled:opacity-50"
+            >
+              {testEmailLoading ? "Sending…" : "Test email"}
+            </button>
             <button
               onClick={() => {
                 resetForm()

@@ -24,7 +24,7 @@ function mapRowToProduct(row: Record<string, unknown>) {
       heightOptions:
         Array.isArray(row.height_options) && row.height_options.length > 0
           ? row.height_options
-          : [30, 40, 50, 60, 70, 80, 90, 100, 260],
+          : [12, 20, 30, 40, 46, 50, 60, 65, 70, 80, 90, 100, 260],
       profile: row.profile ?? "",
       power: row.power ?? "",
       features: row.features ?? [],
@@ -180,7 +180,7 @@ export async function POST(request: NextRequest) {
       height: height || "3cm / 4cm / 5cm / 6cm / 8cm / 26cm",
       height_value: heightValue ?? 50,
       height_options:
-        Array.isArray(heightOptions) && heightOptions.length > 0 ? heightOptions : [30, 40, 50, 60, 70, 80, 90, 100, 260],
+        Array.isArray(heightOptions) && heightOptions.length > 0 ? heightOptions : [12, 20, 30, 40, 46, 50, 60, 65, 70, 80, 90, 100, 260],
       profile: profile || null,
       power: power || null,
       features: features || [],

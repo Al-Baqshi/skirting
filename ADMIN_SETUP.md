@@ -55,14 +55,21 @@ The contact form is now functional and will:
 ### Optional Environment Variables
 
 ```env
-# Contact form webhook (optional)
-CONTACT_WEBHOOK_URL=https://your-webhook-url.com
+# Receive order + contact notifications at one address (easiest)
+ADMIN_EMAIL=your-email@example.com
 
-# Email service (optional)
+# Or separate addresses
+ORDER_NOTIFICATION_EMAIL=your-email@example.com
+CONTACT_NOTIFICATION_EMAIL=your-email@example.com
+
+# Email service (required for notifications)
 EMAIL_SERVICE=resend
 RESEND_API_KEY=your-resend-api-key
-CONTACT_NOTIFICATION_EMAIL=your-email@example.com
-EMAIL_FROM=contact@innovationskirting.co.nz
+EMAIL_FROM=notifications@yourdomain.com   # Must be verified in Resend
+
+# Webhooks (optional)
+CONTACT_WEBHOOK_URL=https://your-webhook-url.com
+ORDER_WEBHOOK_URL=https://your-order-webhook-url.com
 ```
 
 ## Testing

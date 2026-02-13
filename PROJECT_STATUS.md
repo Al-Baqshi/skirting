@@ -42,7 +42,7 @@
    - Updated homepage hero to emphasize "New Zealand's #1 Skirting Specialist"
    - Changed all currency from $ to $ (NZD)
    - Updated contact information to New Zealand (Auckland)
-   - Updated email to info@innovationskirting.co.nz
+   - Updated email to hello@skirting.co.nz
    - Updated phone to +64 9 123 4567
    - Added emphasis on "skirting boards only" specialization
    - Updated all copy to emphasize best prices and highest quality
@@ -152,7 +152,7 @@
 - Admin page is currently accessible to anyone - add authentication
 - All prices are in NZD ($)
 - Contact information is set to Auckland, New Zealand
-- Email domain: innovationskirting.co.nz
+- Email domain: skirting.co.nz
 
 ## Where to Start Next Time
 

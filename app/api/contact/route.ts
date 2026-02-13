@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import {
+  getContactNotificationEmails,
+  isEmailConfigured,
+  sendNotificationEmail,
+} from "@/lib/email-notify"
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -86,31 +91,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Send email if configured (using Resend, SendGrid, etc.)
-    const emailService = process.env.EMAIL_SERVICE
-    const recipientEmail = process.env.CONTACT_NOTIFICATION_EMAIL || process.env.ORDER_NOTIFICATION_EMAIL
-
-    if (emailService === "resend" && recipientEmail) {
-      try {
-        const resendApiKey = process.env.RESEND_API_KEY
-        if (resendApiKey) {
-          await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${resendApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from: process.env.EMAIL_FROM || "contact@innovationskirting.co.nz",
-              to: recipientEmail,
-              subject: `New Contact Form: ${contactData.customer.fullName} - ${contactData.service}`,
-              html: generateContactEmail(contactData),
-            }),
-          })
-        }
-      } catch (emailError) {
-        console.error("Contact email error:", emailError)
-        // Continue even if email fails
+    // Send admin email notification (Resend; recipients from ADMIN_EMAIL or CONTACT/ORDER_NOTIFICATION_EMAIL)
+    const recipientEmails = getContactNotificationEmails()
+    if (isEmailConfigured() && recipientEmails.length > 0) {
+      const result = await sendNotificationEmail({
+        to: recipientEmails,
+        subject: `New Contact Form: ${contactData.customer.fullName} - ${contactData.service}`,
+        html: generateContactEmail(contactData),
+        from: process.env.EMAIL_FROM || "contact@skirting.co.nz",
+      })
+      if (!result.ok) {
+        console.error("Contact notification email failed:", result.error)
       }
     }
 

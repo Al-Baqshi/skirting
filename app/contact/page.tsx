@@ -184,10 +184,10 @@ export default function ContactPage() {
                     <div>
                       <p className="text-skirting-silver font-medium text-sm sm:text-base mb-1">Phone</p>
                       <a
-                        href="tel:+6491234567"
+                        href="tel:+64273388500"
                         className="text-skirting-silver/60 hover:text-skirting-amber text-sm sm:text-base transition-colors"
                       >
-                        +64 9 123 4567
+                        +64 27 338 8500
                       </a>
                     </div>
                   </div>
@@ -211,10 +211,10 @@ export default function ContactPage() {
                     <div>
                       <p className="text-skirting-silver font-medium text-sm sm:text-base mb-1">Email</p>
                       <a
-                        href="mailto:info@innovationskirting.co.nz"
+                        href="mailto:hello@skirting.co.nz"
                         className="text-skirting-silver/60 hover:text-skirting-amber text-sm sm:text-base transition-colors"
                       >
-                        info@innovationskirting.co.nz
+                        hello@skirting.co.nz
                       </a>
                     </div>
                   </div>

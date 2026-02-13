@@ -1,8 +1,16 @@
 # Shortexet – Where You Are & What's Next
 
-**Last updated:** 2026-02-12
+**Last updated:** 2026-02-13
 
-## Latest: Admin filters, price per size, and colors
+## Latest: Email notifications for orders & contact
+
+- **You get an email** when a new order is placed or a contact form is submitted.
+- **One address for both:** Set `ADMIN_EMAIL=your@email.com` in `.env` to receive order and contact notifications at that address.
+- **Or separate addresses:** Use `ORDER_NOTIFICATION_EMAIL` for orders and `CONTACT_NOTIFICATION_EMAIL` for contact (contact falls back to `ORDER_NOTIFICATION_EMAIL` if unset).
+- **Required env:** `EMAIL_SERVICE=resend`, `RESEND_API_KEY=re_xxx`, and `EMAIL_FROM` (must be a verified domain in Resend). Get API key at [resend.com](https://resend.com).
+- **Implementation:** `lib/email-notify.ts` (helper); orders and contact APIs use it so you can view new items in Admin → Orders & Inquiries and get an email at the same time.
+
+## Previous: Admin filters, price per size, and colors
 
 - **Admin product list filters**
   - **LED:** All / With LED / Without LED (dropdown next to search).
@@ -31,12 +39,15 @@
 
 ## Next actions
 
-1. **Run migration:** Apply `supabase/migrations/007_add_price_by_height_and_colors.sql` if not already applied.
-2. **Admin:** Use filters to narrow products; when adding/editing a product, set default price and/or price per size, and add colours as needed.
-3. **Add more products:** Continue using `lib/product-catalog.ts`, admin UI, and product images as before; new fields are optional and backward-compatible.
+1. **Enable email notifications:** In `.env` add `ADMIN_EMAIL=your@email.com`, `EMAIL_SERVICE=resend`, `RESEND_API_KEY=re_xxx`, and `EMAIL_FROM=you@yourdomain.com` (Resend verified). Restart dev server; new orders and contact submissions will email you.
+2. **Run migration:** Apply `supabase/migrations/007_add_price_by_height_and_colors.sql` if not already applied.
+3. **Admin:** Use filters to narrow products; when adding/editing a product, set default price and/or price per size, and add colours as needed.
 
 ## Key files
 
+- `lib/email-notify.ts` – admin email helper (order + contact notifications)
+- `app/api/orders/route.ts` – creates order, sends email to ADMIN_EMAIL / ORDER_NOTIFICATION_EMAIL
+- `app/api/contact/route.ts` – creates inquiry, sends email to ADMIN_EMAIL / CONTACT_NOTIFICATION_EMAIL
 - `supabase/migrations/007_add_price_by_height_and_colors.sql` – price_by_height, colors columns
 - `lib/supabase-products.ts` – types, `getPriceForHeight`, mapDbProduct
 - `app/api/admin/products/route.ts` – GET/POST with priceByHeight & colors

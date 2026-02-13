@@ -19,7 +19,7 @@ type Props = {
 export function ProductViewClient({ product, allProducts, catalogEntry }: Props) {
   const heightOpts = product.heightOptions && product.heightOptions.length > 0
     ? product.heightOptions.sort((a, b) => a - b)
-    : [30, 40, 50, 60, 70, 80, 90, 100, 260]
+    : [12, 20, 30, 40, 46, 50, 60, 65, 70, 80, 90, 100, 260]
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const MIN_ORDER_METERS = 1

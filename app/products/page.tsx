@@ -10,13 +10,14 @@ import type { StorefrontProduct } from "@/lib/supabase-products"
 import { getDisplayColors } from "@/lib/product-catalog"
 
 const ledPresence = ["All", "With LED", "Without LED"]
-const heights = ["All", "3cm", "4cm", "5cm", "6cm", "7cm", "8cm", "9cm", "10cm", "26cm"]
+const heights = ["All", "1.2cm", "2cm", "3cm", "4cm", "4.6cm", "5cm", "6cm", "6.5cm", "7cm", "8cm", "9cm", "10cm", "26cm"]
 const MIN_ORDER_METERS = 1
 const DEFAULT_LENGTH_M = 50
 const SHOW_PRICE = false
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<StorefrontProduct[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [filters, setFilters] = useState({
     led: "All",
@@ -37,6 +38,7 @@ export default function ProductsPage() {
   useEffect(() => {
     const load = async () => {
       try {
+        setIsLoading(true)
         setLoadError(null)
         const res = await fetch("/api/products")
         const json = (await res.json()) as { products?: StorefrontProduct[]; error?: string }
@@ -50,6 +52,8 @@ export default function ProductsPage() {
         const message = err instanceof Error ? err.message : "Unknown error"
         setLoadError(message)
         setProducts([])
+      } finally {
+        setIsLoading(false)
       }
     }
 
@@ -71,8 +75,8 @@ export default function ProductsPage() {
             ? product.heightOptions
             : product.heightValue
               ? [product.heightValue]
-              : [30, 40, 50, 60, 70, 80, 90, 100, 260]
-        const filterVal = filters.height === "3cm" ? 30 : filters.height === "4cm" ? 40 : filters.height === "5cm" ? 50 : filters.height === "6cm" ? 60 : filters.height === "7cm" ? 70 : filters.height === "8cm" ? 80 : filters.height === "9cm" ? 90 : filters.height === "10cm" ? 100 : filters.height === "26cm" ? 260 : null
+              : [12, 20, 30, 40, 46, 50, 60, 65, 70, 80, 90, 100, 260]
+        const filterVal = filters.height === "1.2cm" ? 12 : filters.height === "2cm" ? 20 : filters.height === "3cm" ? 30 : filters.height === "4cm" ? 40 : filters.height === "4.6cm" ? 46 : filters.height === "5cm" ? 50 : filters.height === "6cm" ? 60 : filters.height === "6.5cm" ? 65 : filters.height === "7cm" ? 70 : filters.height === "8cm" ? 80 : filters.height === "9cm" ? 90 : filters.height === "10cm" ? 100 : filters.height === "26cm" ? 260 : null
         if (filterVal !== null && !opts.includes(filterVal)) return false
       }
       if (filters.search && !product.name.toLowerCase().includes(filters.search.toLowerCase())) return false
@@ -265,27 +269,36 @@ export default function ProductsPage() {
                 {loadError}
               </div>
             )}
-            {/* Sort & Results */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <p className="text-skirting-silver">
-                Showing <span className="text-white font-medium">{filteredProducts.length}</span> products
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="text-skirting-silver text-sm">Sort by:</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                  className="bg-skirting-charcoal border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-skirting-amber focus:outline-none"
-                >
-                  <option value="name">Name</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                </select>
-              </div>
-            </div>
 
-            {/* Products */}
-            {filteredProducts.length === 0 ? (
+            {isLoading ? (
+              <div className="bg-skirting-charcoal border border-white/10 rounded-2xl p-12 text-center min-h-[320px] flex flex-col items-center justify-center">
+                <div className="w-10 h-10 border-2 border-skirting-amber/30 border-t-skirting-amber rounded-full animate-spin mx-auto mb-4" aria-hidden />
+                <h3 className="text-white text-xl font-semibold mb-2">Products are loading</h3>
+                <p className="text-skirting-silver/70">Fetching our range of skirting boards…</p>
+              </div>
+            ) : (
+              <>
+                {/* Sort & Results */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <p className="text-skirting-silver">
+                    Showing <span className="text-white font-medium">{filteredProducts.length}</span> products
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-skirting-silver text-sm">Sort by:</span>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                      className="bg-skirting-charcoal border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:border-skirting-amber focus:outline-none"
+                    >
+                      <option value="name">Name</option>
+                      <option value="price-asc">Price: Low to High</option>
+                      <option value="price-desc">Price: High to Low</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Products */}
+                {filteredProducts.length === 0 ? (
               <div className="bg-skirting-charcoal border border-white/10 rounded-2xl p-12 text-center">
                 <svg
                   className="w-16 h-16 text-skirting-silver/30 mx-auto mb-4"
@@ -404,7 +417,7 @@ export default function ProductsPage() {
                       </div>
 
                       {(() => {
-                        const opts = product.heightOptions && product.heightOptions.length > 0 ? product.heightOptions : [30, 40, 50, 60, 70, 80, 90, 100, 260]
+                        const opts = product.heightOptions && product.heightOptions.length > 0 ? product.heightOptions : [12, 20, 30, 40, 46, 50, 60, 65, 70, 80, 90, 100, 260]
                         const hasMultipleHeights = opts.length > 1
                         return hasMultipleHeights ? (
                           <div className="mb-3">
@@ -476,6 +489,8 @@ export default function ProductsPage() {
                   </div>
                 ))}
               </div>
+            )}
+              </>
             )}
           </main>
         </div>

@@ -57,7 +57,7 @@ CONTACT_NOTIFICATION_EMAIL=your-email@example.com
 # Optional - Email Service (Resend)
 EMAIL_SERVICE=resend
 RESEND_API_KEY=your-resend-api-key
-EMAIL_FROM=contact@innovationskirting.co.nz
+EMAIL_FROM=contact@skirting.co.nz
 
 # Optional - Order Webhook
 ORDER_WEBHOOK_URL=https://your-webhook-url.com
